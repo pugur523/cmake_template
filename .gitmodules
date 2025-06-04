@@ -1,0 +1,9 @@
+[submodule "src/third_party/toml11"]
+	path = src/third_party/toml11
+	url = https://github.com/ToruNiina/toml11
+[submodule "src/third_party/zlib"]
+	path = src/third_party/zlib
+	url = https://github.com/madler/zlib
+[submodule "src/third_party/gtest"]
+	path = src/third_party/gtest
+	url = https://github.com/google/googletest

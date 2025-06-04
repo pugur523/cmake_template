@@ -1,0 +1,253 @@
+# Copyright 2025 pugur
+# All rights reserved.
+
+name: build
+
+on:
+  push:
+    paths:
+      - "src/**"
+      - ".clang-tidy"
+      - ".gitmodules"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/scripts/summarize.py"
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: 3.13
+  CMAKE_VERSION: 4.0.2
+
+jobs:
+  build:
+    name: Build for ${{ matrix.target_platform }} (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target_platform: linux
+            shell: bash
+            cc: clang
+            cxx: clang++
+            llvm_version: "21"
+          - os: windows-latest
+            target_platform: windows
+            shell: pwsh
+            cc: clang-cl
+            cxx: clang-cl
+            llvm_version: "20.1.4"
+          - os: macos-latest
+            target_platform: darwin
+            shell: bash
+            cc: clang
+            cxx: clang++
+            llvm_version: "19"
+          - os: ubuntu-latest
+            target_platform: mingw
+            shell: bash
+            cc: x86_64-w64-mingw32-clang
+            cxx: x86_64-w64-mingw32-clang++
+            llvm_version: "21"
+
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Setup build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            out/build
+            ~/.cache/pip
+          key: ${{ runner.os }}-${{ matrix.target_platform }}-${{ hashFiles('**/CMakeLists.txt', 'src/**/*.cc', 'src/**/*.cpp', 'src/**/*.c', 'src/**/*.h', 'src/**/*.hpp', '.gitmodules', 'src/build/scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target_platform }}-
+            ${{ runner.os }}-
+
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            wget \
+            curl \
+            gnupg \
+            lsb-release \
+            software-properties-common \
+            ca-certificates \
+            git \
+            ninja-build
+          
+          # sudo apt-get install -y \
+          #   nasm \
+          #   yasm \
+          #   make \
+          #   pkg-config
+
+          # Install CMake
+          CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v${{ env.CMAKE_VERSION }}/cmake-${{ env.CMAKE_VERSION }}-linux-x86_64.sh"
+          wget -nv "${CMAKE_URL}" -O cmake-installer.sh
+          chmod +x cmake-installer.sh
+          sudo ./cmake-installer.sh --skip-license --prefix=/usr/local
+          rm cmake-installer.sh
+
+          # Install LLVM
+          wget -O llvm.sh https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh ${{ matrix.llvm_version }} all
+          rm llvm.sh
+
+          sudo apt-get install -y libunwind-${{ matrix.llvm_version }}-dev
+
+          # Set up alternatives
+          for bin in clang clang++ clang-tidy; do
+            sudo update-alternatives --remove-all "$bin" 2>/dev/null || true
+          done
+
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ matrix.llvm_version }} 100
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${{ matrix.llvm_version }} 100
+          sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-${{ matrix.llvm_version }} 100
+
+          sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.llvm_version }}
+          sudo update-alternatives --set clang++ /usr/bin/clang++-${{ matrix.llvm_version }}
+          sudo update-alternatives --set clang-tidy /usr/bin/clang-tidy-${{ matrix.llvm_version }}
+
+          clang --version
+          clang++ --version
+          clang-tidy --version
+
+      - name: Install dependencies (MinGW)
+        if: matrix.target_platform == 'mingw'
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update && sudo apt-get install -y nsis wine wine32
+          echo $(./src/build/scripts/install_llvm_mingw.sh) >> $GITHUB_PATH
+
+      - name: Install dependencies (Windows)
+        if: matrix.target_platform == 'windows'
+        run: |
+          choco install cmake --version=${{ env.CMAKE_VERSION }} --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          choco install llvm --version=${{ matrix.llvm_version }} -y
+          choco install python3 nsis wixtoolset ninja -y
+
+      - name: Install dependencies (macOS)
+        if: matrix.target_platform == 'darwin'
+        run: |
+          brew update
+          brew install --formula cmake yasm nasm llvm@${{ matrix.llvm_version }} lld@${{ matrix.llvm_version }}
+
+          LLVM_PREFIX=$(brew --prefix llvm@${{ matrix.llvm_version }})
+          echo "LLVM_BIN=${LLVM_PREFIX}/bin" >> $GITHUB_ENV
+          echo "PATH=${LLVM_PREFIX}/bin:$PATH" >> $GITHUB_ENV
+          export PATH="${LLVM_PREFIX}/bin:$PATH"
+
+          LLD_PREFIX=$(brew --prefix lld@${{ matrix.llvm_version }})
+          echo "LLD_BIN=${LLD_PREFIX}/bin" >> $GITHUB_ENV
+          echo "PATH=${LLD_PREFIX}/bin:$PATH" >> $GITHUB_ENV
+          export PATH="${LLD_PREFIX}/bin:$PATH"
+      
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip setuptools wheel
+          if [ -f "src/build/scripts/requirements.txt" ]; then
+            python3 -m pip install -r src/build/scripts/requirements.txt
+          fi
+        shell: bash
+
+      - name: Run build script (Non-Windows)
+        if: matrix.os != 'windows-latest'
+        run: |
+          python3 -u src/build/scripts/build.py \
+            --build_mode=all \
+            --target_platform=${{ matrix.target_platform }} \
+            --extra_args="-DBUILD_CORE_SHARED=true,-DENABLE_BUILD_REPORT=false"
+
+
+      - name: Run build script (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          call "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath > path.txt
+          set /p InstallPath=<path.txt
+          call "%InstallPath%\VC\Auxiliary\Build\vcvarsall.bat" x64
+          python3 -u ./src/build/scripts/build.py \
+            --build_mode=all \
+            --target_platform=${{ matrix.target_platform }} \
+            --no-clang_tidy \
+            --extra_args="-DBUILD_CORE_SHARED=true,-DENABLE_BUILD_REPORT=false"
+        shell: cmd
+
+      - name: Upload debug artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debug-builds-${{ matrix.target_platform }}
+          path: out/install/*/*/debug/bin
+          retention-days: 1
+          if-no-files-found: warn
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-builds-${{ matrix.target_platform }}
+          path: out/install/*/*/release/bin
+          retention-days: 1
+          if-no-files-found: warn
+
+  summary:
+    name: Summarize builds
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download all debug artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: debug-builds-*
+          path: ./artifacts/debug/
+        continue-on-error: true
+
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-builds-*
+          path: ./artifacts/release/
+        continue-on-error: true
+
+      - name: Show artifacts tree
+        run: |
+          if [ -d "./artifacts" ]; then
+            tree ./artifacts || ls -la ./artifacts
+          else
+            echo "No artifacts found"
+          fi
+
+      - name: Generate build summary
+        run: |
+          python3 .github/workflows/scripts/summarize.py artifacts > summary.md
+          cat summary.md >> $GITHUB_STEP_SUMMARY

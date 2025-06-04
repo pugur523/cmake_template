@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Copyright 2025 pugur
+# All rights reserved.
+
+set -e
+
+scripts_dir=$(cd $(dirname $0) && pwd)
+root_dir="${scripts_dir}/../../.."
+cd ${root_dir}
+
+image_name="cmake_template"
+
+docker build . -f ${scripts_dir}/ubuntu.dockerfile -t ${image_name}:ubuntu
+docker build . -f ${scripts_dir}/arch_linux.dockerfile -t ${image_name}:arch_linux
