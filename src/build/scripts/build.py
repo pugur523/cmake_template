@@ -341,7 +341,7 @@ def main(argv):
     args = parser.parse_args()
 
     if args.cpplint:
-        run_cpplint(project_src_dir)
+        run_cpplint(project_root_dir)
 
     if args.clang_format:
         run_clang_format(project_root_dir)

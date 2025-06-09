@@ -20,7 +20,7 @@ def run_cpplint(src_dir, cpplint_cfg=""):
     if not cpplint_cfg:
         cpplint_cfg = "CPPLINT.cfg"
     result = run_command(
-        ["python3", "-m", "cpplint", "--exclude=third_party", "--recursive", "--config=" + cpplint_cfg, "./src"],
+        ["python3", "-m", "cpplint", "--exclude=src/third_party", "--recursive", "--config=" + cpplint_cfg, "./src"],
         cwd=src_dir,
     )
     if result.returncode != 0:

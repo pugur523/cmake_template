@@ -62,7 +62,7 @@ macro(setup_llvm)
 
   if(MINGW_BUILD)
     list(APPEND PROJECT_LINK_OPTIONS -Wl,-Bstatic -lc++ -lc++abi -lunwind -Wl,-Bdynamic)
-  else()
+  elseif(NOT TARGET_OS_NAME MATCHES "windows")
     list(APPEND LLVM_LINK_LIBRARIES c++ c++abi unwind)
   endif()
 
