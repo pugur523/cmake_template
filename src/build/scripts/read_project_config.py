@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# Copyright 2025 pugur
-# All rights reserved.
-
 import tomllib
 import sys
 from typing import Any
@@ -20,16 +17,16 @@ def load_project_metadata(file_path: str) -> dict[str, Any]:
         sys.exit(1)
     except KeyError:
         print(f"Error: Missing [project] section in {file_path}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(2)
     except tomllib.TOMLDecodeError as e:
         print(f"Error: Failed to parse TOML: {e}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(3)
 
 
 def main() -> int:
     prj = load_project_metadata(project_config_file)
 
-    print(prj.get("project_name", "<no name>"))
+    print(prj.get("name", "<no name>"))
     print(prj.get("main_executable_name", "<no executable name>"))
     print(prj.get("version", "<no version>"))
     print(prj.get("description", "<no description>"))

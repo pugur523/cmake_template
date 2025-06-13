@@ -1,11 +1,9 @@
-// Copyright 2025 pugur
-// All rights reserved.
-
 #include "build/build_flag.h"
 
 #if IS_WINDOWS
 
 #include <windows.h>
+
 #include "app/app.h"
 
 // main function for /SUBSYSTEM:CONSOLE

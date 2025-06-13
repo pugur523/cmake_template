@@ -1,13 +1,10 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 macro(setup_windows_flags)
   # Enable color and use libc++
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics -fdiagnostics-color=always /clang:-fdiagnostics-show-option" PARENT_SCOPE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics -fdiagnostics-color=always /clang:-fdiagnostics-show-option" PARENT_SCOPE)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics -fdiagnostics-color=always" PARENT_SCOPE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics -fdiagnostics-color=always" PARENT_SCOPE)
 
   # Base flags - enable warnings
-  list(APPEND PROJECT_COMPILE_OPTIONS /W4 /clang:-Wall /clang:-Wextra /clang:-Wpedantic)
+  list(APPEND PROJECT_COMPILE_OPTIONS /W4 /clang:-Wall /clang:-Wextra /clang:-Wpedantic /clang:-fno-exceptions)
 
   if(WARNINGS_AS_ERRORS)
     list(APPEND PROJECT_COMPILE_OPTIONS /WX /clang:-Werror)
@@ -52,15 +49,17 @@ macro(setup_windows_flags)
   if(ENABLE_OPTIMIZATION_REPORT)
     list(APPEND PROJECT_COMPILE_OPTIONS "/clang:-fsave-optimization-record;/clang:-fdebug-compilation-dir=.;/clang:-Rpass='.*';/clang:-Rpass-missed='.*';/clang:-Rpass-analysis='.*'")
   endif()
+
+  list(APPEND WINDOWS_LINK_LIBRARIES "dbghelp")
 endmacro()
 
 macro(setup_unix_flags)
   # Enable color and use libc++
-  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -fdiagnostics-show-option")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -fdiagnostics-show-option -stdlib=libc++")
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -stdlib=libc++")
 
   # Base flags - enable warnings
-  list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -fno-common)
+  list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -fno-common -fno-exceptions)
 
   if(WARNINGS_AS_ERRORS)
     list(APPEND PROJECT_COMPILE_OPTIONS -Werror)
@@ -152,6 +151,13 @@ macro(setup_unix_flags)
     set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${SAN_FLAGS}")
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} ${SAN_FLAGS}")
   endif()
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=")
+endmacro()
+
+macro(setup_mingw_flags)
+  set(MINGW_LINK_LIBRARIES "dbghelp")
 endmacro()
 
 macro(setup_apple_flags)
@@ -165,7 +171,7 @@ endmacro()
 
 macro(setup_common_flags)
   # Profiling with llvm-coverage
-  if(ENABLE_PROFILE)
+  if(ENABLE_COVERAGE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
   endif()
@@ -176,6 +182,10 @@ macro(setup_common_flags)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fxray-instrument -fxray-instrumentation-bundle=function -fxray-instruction-threshold=1")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fxray-instrument -fxray-link-deps")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fxray-shared")
+
+    add_compile_definitions(ENABLE_XRAY=1)
+  else()
+    add_compile_definitions(ENABLE_XRAY=0)
   endif()
 endmacro()
 
@@ -191,6 +201,10 @@ macro(setup_flags)
     setup_windows_flags()
   elseif(NOT MSVC)
     setup_unix_flags()
+  endif()
+
+  if(MINGW_BUILD)
+    setup_mingw_flags()
   endif()
 
   if(APPLE)

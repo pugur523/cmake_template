@@ -65,6 +65,5 @@ RUN python3 -u ${SCRIPTS_DIR}/build.py \
         --no-clang_format \
         --clang_tidy \
         --build_async \
-        --build_testing \
         --no-fail_fast \
-        --extra_args="-DENABLE_BUILD_REPORT=true,-DENABLE_PROFILE=true,-DENABLE_OPTIMIZATION_REPORT=true,-DENABLE_XRAY=false,-DENABLE_SANITIZERS=false"
+        --extra_args="-DENABLE_BUILD_REPORT=true,-DENABLE_COVERAGE=true,-DENABLE_OPTIMIZATION_REPORT=true,-DENABLE_XRAY=false,-DENABLE_SANITIZERS=false"

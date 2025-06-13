@@ -1,6 +1,3 @@
-// Copyright 2025 pugur
-// All rights reserved.
-
 #include "gtest/gtest.h"
 
 namespace {

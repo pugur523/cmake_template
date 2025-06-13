@@ -1,6 +1,3 @@
-// Copyright 2025 pugur
-// All rights reserved.
-
 #ifndef BUILD_COMPONENT_EXPORT_H_
 #define BUILD_COMPONENT_EXPORT_H_
 

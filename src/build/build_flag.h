@@ -1,6 +1,3 @@
-// Copyright 2025 pugur
-// All rights reserved.
-
 #ifndef BUILD_BUILD_FLAG_H_
 #define BUILD_BUILD_FLAG_H_
 
@@ -271,6 +268,16 @@
 
 #endif
 
+#if ENABLE_XRAY
+#define XRAY_FN [[clang::xray_always_instrument]]
+#define XRAY_FN_LOG [[clang::xray_always_instrument, clang::xray_log_args(1)]]
+
+#else
+#define XRAY_FN
+#define XRAY_FN_LOG
+
+#endif
+
 // ==========================
 // Compiler Version Detection
 // ==========================
@@ -291,20 +298,6 @@
 
 #else
 #define COMPILER_VERSION 0
-
-#endif
-
-// ============================
-// Shared Library Export/Import
-// ============================
-
-#if IS_WINDOWS
-#define DLL_EXPORT __declspec(dllexport)
-#define DLL_IMPORT __declspec(dllimport)
-
-#else
-#define DLL_EXPORT __attribute__((visibility("default")))
-#define DLL_IMPORT
 
 #endif
 

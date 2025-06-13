@@ -1,9 +1,6 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
-message(STATUS "Configuring app module...")
-
 set(MAIN_EXECUTABLE_NAME ${MAIN_EXECUTABLE_NAME_FROM_CONFIG})
+
+message(STATUS "Configuring ${MAIN_EXECUTABLE_NAME}...")
 
 set(COMMON_SOURCES
   app.cc
@@ -26,9 +23,10 @@ if(TARGET_OS_NAME MATCHES "windows")
     ${WINDOWS_SOURCES}
   )
 
-  # If you don't need to show console, use WIN32 instead.
-  add_executable(${MAIN_EXECUTABLE_NAME} WIN32 ${SOURCES})
-  # add_executable(${MAIN_EXECUTABLE_NAME} ${SOURCES})
+  # If you don't want to show console, use WIN32 instead.
+  # add_executable(${MAIN_EXECUTABLE_NAME} WIN32 ${SOURCES})
+  add_executable(${MAIN_EXECUTABLE_NAME} ${SOURCES})
+
 else()
   set(SOURCES
     ${COMMON_SOURCES}
@@ -53,7 +51,7 @@ if(DO_CLANG_TIDY)
   )
 endif()
 
-if(ENABLE_PROFILE AND ENABLE_RUN_APP_POST_BUILD)
+if(ENABLE_COVERAGE AND ENABLE_RUN_APP_POST_BUILD)
   if(MINGW_BUILD)
     set(EXE_COMMAND wine $<TARGET_FILE:${MAIN_EXECUTABLE_NAME}>)
   else()
@@ -113,17 +111,21 @@ add_custom_command(TARGET ${MAIN_EXECUTABLE_NAME} POST_BUILD
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
-install(
-  TARGETS ${MAIN_EXECUTABLE_NAME}
-  RUNTIME
-  COMPONENT Runtime
-)
+if(INSTALL_PROGRAM)
+  install(
+    TARGETS ${MAIN_EXECUTABLE_NAME}
+    RUNTIME
+    COMPONENT Runtime
+  )
 
-install(
-  FILES "${CMAKE_PDB_OUTPUT_DIRECTORY}/${MAIN_EXECUTABLE_NAME}.pdb"
-  DESTINATION bin
-  COMPONENT Runtime
-  OPTIONAL
-)
+  install(
+    FILES "${CMAKE_PDB_OUTPUT_DIRECTORY}/${MAIN_EXECUTABLE_NAME}.pdb"
+    DESTINATION bin
+    COMPONENT Runtime
+    OPTIONAL
+  )
+endif()
 
-describe_target(${MAIN_EXECUTABLE_NAME})
+if(ENABLE_VERBOSE)
+  describe_target(${MAIN_EXECUTABLE_NAME})
+endif()

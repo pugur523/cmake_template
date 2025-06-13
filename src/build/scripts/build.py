@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# Copyright 2025 pugur
-# All rights reserved.
-
 import argparse
 from itertools import product
 import os
@@ -74,24 +71,30 @@ def build_all_options_matrix(
     archs,
     build_types,
     do_clang_tidy,
-    build_testing,
     fail_fast,
 ):
     options = {
-        "-D BUILD_SHARED": ["true"],
-        "-D BUILD_TESTING": ["true"],
-        "-D BUILD_CORE_SHARED": ["true"],
-        "-D ENABLE_LTO": ["false"],
-        "-D ENABLE_NATIVE_ARCH": ["false"],
-        "-D ENABLE_BUILD_REPORT": ["true"],
-        "-D ENABLE_PROFILE": ["true"],
-        "-D ENABLE_OPTIMIZATION_REPORT": ["true"],
-        "-D ENABLE_XRAY": ["false", "true"],
-        "-D ENABLE_SANITIZERS": ["false", "true"],
-        "-D ENABLE_RUN_APP_POST_BUILD": ["true"],
-        "-D ENABLE_RUN_TESTS_POST_BUILD": ["true"],
-        "-D WARNINGS_AS_ERRORS": ["true"],
+        "-DBUILD_CORE_SHARED": ["false", "true"],
+        "-DENABLE_XRAY": ["false", "true"],
+        "-DENABLE_SANITIZERS": ["false", "true"],
     }
+
+    common_args = [
+        "-DENABLE_VERBOSE=false",
+        "-DBUILD_SHARED=true",
+        "-DBUILD_TESTING=true",
+        "-DINSTALL_TESTING=false",
+        "-DENABLE_RUN_APP_POST_BUILD=false",
+        "-DENABLE_RUN_TESTS_POST_BUILD=false",
+        "-DWARNINGS_AS_ERRORS=true",
+        "-DENABLE_LTO=true",
+        "-DENABLE_NATIVE_ARCH=true",
+        "-DENABLE_BUILD_REPORT=true",
+        "-DENABLE_COVERAGE=true",
+        "-DENABLE_OPTIMIZATION_REPORT=true",
+    ]
+
+    common_args_str = ",".join(common_args)
 
     option_keys = list(options.keys())
     option_values = list(options.values())
@@ -99,14 +102,15 @@ def build_all_options_matrix(
     all_combinations = product(target_platforms, archs, build_types, *option_values)
 
     print(
-        f"Testing {len(target_platforms)} platforms x {len(archs)} arch x {len(build_types)} build types x {len(list(product(*option_values)))} = {len(target_platforms) * len(archs) * len(build_types) * len(list(product(*option_values)))} option combinations..."
+        f"testing {len(target_platforms) * len(archs) * len(build_types) * len(list(product(*option_values)))} option combinations..."
     )
 
     headers = ["OS", "Arch", "BuildType"] + option_keys + ["Result"]
 
     def build_single_combination(args):
         platform, arch, build_type, *opt_values = args
-        extra_args = ",".join(
+        extra_args = common_args_str
+        extra_args += ",".join(
             f"{k}={v.upper()}" for k, v in zip(option_keys, opt_values)
         )
         try:
@@ -115,7 +119,6 @@ def build_all_options_matrix(
                 target_arch=arch,
                 build_type=build_type,
                 do_clang_tidy=do_clang_tidy,
-                build_testing=build_testing,
                 build_async=True,
                 install=False,
                 package=False,
@@ -141,6 +144,7 @@ def build_all_options_matrix(
     failures = [r for r in results if r[-1] != "✅"]
     if failures:
         print(f"\n{len(failures)} / {len(results)} combinations failed.")
+        print(tabulate(failures, headers=headers, tablefmt="grid"))
         return 1
     end_time = time()
     total_sec = end_time - start_time
@@ -151,15 +155,14 @@ def build_all_options_matrix(
 
 
 def build_project(
-    target_platform,
-    target_arch,
-    build_type,
-    do_clang_tidy=False,
-    build_testing=True,
-    build_async=True,
-    install=False,
-    package=False,
-    extra_args="",
+    target_platform: str,
+    target_arch: str,
+    build_type: str,
+    do_clang_tidy: bool = False,
+    build_async: bool = True,
+    install: bool = False,
+    package: bool = False,
+    extra_args: str = "",
 ):
     if target_platform not in supported_platforms:
         print(f"Unknown platform specified ({target_platform})")
@@ -185,13 +188,14 @@ def build_project(
         return -1
 
     args = [
-        "-D CMAKE_TOOLCHAIN_FILE=" + toolchain_file,
+        "--toolchain",
+        toolchain_file,
+        "--install-prefix",
+        install_dir,
         "-D BUILD_DEBUG=" + ("TRUE" if build_type == "debug" else "FALSE"),
-        "-D CMAKE_INSTALL_PREFIX=" + install_dir,
         "-D TARGET_OS_NAME=" + target_platform,
         "-D TARGET_ARCH=" + target_arch,
         "-D DO_CLANG_TIDY=" + ("TRUE" if do_clang_tidy else "FALSE"),
-        "-D BUILD_TESTING=" + ("TRUE" if build_testing else "FALSE"),
     ]
     if extra_args:
         extra_args_list = extra_args.split(",")
@@ -233,7 +237,6 @@ def build_project(
         build_command.append("--parallel")
         package_command.append("--parallel")
 
-    print("configure command: ", args)
     result = run_command(
         configure_command,
         cwd=project_root_dir,
@@ -284,34 +287,28 @@ def main(argv):
         help="comma-separated target architectures",
     )
     parser.add_argument(
-        "--cpplint",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="do cpplint before build",
-    )
-    parser.add_argument(
         "--clang_format",
         action=argparse.BooleanOptionalAction,
-        default=False,
-        help="do clang-format before build",
+        default=True,
+        help="run clang-format before build",
     )
     parser.add_argument(
         "--clang_tidy",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="do clang-tidy analysis on build",
+        help="run clang-tidy analysis on build",
+    )
+    parser.add_argument(
+        "--cpplint",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="run cpplint before build",
     )
     parser.add_argument(
         "--build_async",
         action=argparse.BooleanOptionalAction,
         default=True,
         help="build all configs asynchronously",
-    )
-    parser.add_argument(
-        "--build_testing",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="build testing units",
     )
     parser.add_argument(
         "--install",
@@ -340,11 +337,11 @@ def main(argv):
 
     args = parser.parse_args()
 
-    if args.cpplint:
-        run_cpplint(project_root_dir)
-
     if args.clang_format:
         run_clang_format(project_root_dir)
+
+    if args.cpplint:
+        run_cpplint(project_root_dir)
 
     target_platforms = [x for x in args.target_platforms.split(",") if x]
     target_archs = [x for x in args.target_archs.split(",") if x]
@@ -363,9 +360,10 @@ def main(argv):
             target_archs,
             target_build_types,
             args.clang_tidy,
-            args.build_testing,
             args.fail_fast,
         )
+
+    start_time = time()
 
     successfull_configs = []
     failed_configs = []
@@ -387,15 +385,14 @@ def main(argv):
                 "build_type": build_type,
             }
             result = build_project(
-                platform,
-                arch,
-                build_type,
-                args.clang_tidy,
-                args.build_testing,
-                args.build_async,
-                args.install,
-                args.package,
-                args.extra_args,
+                target_platform=platform,
+                target_arch=arch,
+                build_type=build_type,
+                do_clang_tidy=args.clang_tidy,
+                build_async=args.build_async,
+                install=args.install,
+                package=args.package,
+                extra_args=args.extra_args,
             )
 
             return result, config_entry
@@ -421,13 +418,14 @@ def main(argv):
                 "build_type": build_type,
             }
             result = build_project(
-                target_platform,
-                target_arch,
-                build_type,
-                args.clang_tidy,
-                args.build_testing,
-                args.build_async,
-                args.extra_args,
+                target_platform=target_platform,
+                target_arch=target_arch,
+                build_type=build_type,
+                do_clang_tidy=args.clang_tidy,
+                build_async=args.build_async,
+                install=args.install,
+                package=args.package,
+                extra_args=args.extra_args,
             )
             if result != 0:
                 if args.fail_fast:
@@ -446,6 +444,12 @@ def main(argv):
         print(tabulate(failed_configs, headers="keys", tablefmt="grid"))
         failed_counts = len(failed_configs)
         return failed_counts
+
+    end_time = time()
+    total_sec = end_time - start_time
+    minutes = int(total_sec // 60)
+    seconds = int(total_sec % 60)
+    print(f"\nBuild completed in {minutes} min {seconds} sec.")
 
     return 0
 

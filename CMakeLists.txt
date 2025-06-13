@@ -1,6 +1,3 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 cmake_minimum_required(VERSION 4.0.2 FATAL_ERROR)
 
 execute_process(

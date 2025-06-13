@@ -1,27 +1,30 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
-message(STATUS "Configuring core module...")
-
 set(MODULE_NAME "core")
 set(MODULE_OBJECTS_NAME "core_objects")
 
-add_library(${MODULE_OBJECTS_NAME} OBJECT
-  base/core.cc
+message(STATUS "Configuring ${MODULE_NAME} module...")
+
+set(SOURCES
+  check.cc
+  location.cc
+  base/string_util.cc
+  diagnostics/signal_handler.cc
+  diagnostics/stack_trace_entry.cc
+  diagnostics/stack_trace.cc
+  diagnostics/system_info.cc
+  diagnostics/terminate_handler.cc
+  time/time_util.cc
 )
+
+add_library(${MODULE_OBJECTS_NAME} OBJECT ${SOURCES})
 
 setup_module(${MODULE_NAME} ${MODULE_OBJECTS_NAME}
   INCLUDE_DIRS ${PROJECT_INCLUDE_DIRECTORIES}
   LINK_DIRS ${PROJECT_LINK_DIRECTORIES}
   COMPILE_OPTIONS ${PROJECT_COMPILE_OPTIONS}
   LINK_OPTIONS ${PROJECT_LINK_OPTIONS}
+  LINK_LIBS ${PROJECT_LINK_LIBRARIES}
 )
 
-install(
-  FILES "${CMAKE_PDB_OUTPUT_DIRECTORY}/${MODULE_NAME}.pdb" "${CMAKE_PDB_OUTPUT_DIRECTORY}/${MODULE_NAME}d.pdb"
-  DESTINATION bin
-  COMPONENT Runtime
-  OPTIONAL
-)
-
-describe_target(${MODULE_NAME})
+if(ENABLE_VERBOSE)
+  describe_target(${MODULE_NAME})
+endif()

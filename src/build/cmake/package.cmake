@@ -1,6 +1,3 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 function(setup_package)
   include(InstallRequiredSystemLibraries)
   set(CPACK_PACKAGE_NAME "${MAIN_EXECUTABLE_NAME_FROM_CONFIG}")
@@ -16,7 +13,7 @@ function(setup_package)
   set(CPACK_PACKAGE_INSTALL_DIRECTORY "${MAIN_EXECUTABLE_NAME_FROM_CONFIG}")
   set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME}_${CPACK_PACKAGE_VERSION}")
   set(CPACK_PACKAGE_EXECUTABLES "${MAIN_EXECUTABLE_NAME_FROM_CONFIG}" "Launch ${CMAKE_PROJECT_NAME}")
-  
+
   if(TARGET_OS_NAME MATCHES "linux")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
     set(CPACK_GENERATOR "DEB;TGZ")
@@ -30,7 +27,8 @@ function(setup_package)
     if(NOT MINGW_BUILD)
       set(CPACK_GENERATOR "${CPACK_GENERATOR};WIX")
       set(CPACK_RESOURCE_FILE_LICENSE "${BUILD_RESOURCES_DIR}/windows/license.txt")
-      set(CPACK_WIX_UPGRADE_GUID "A9200729-C6DD-44CC-A82E-149A6B08DA49")
+      set(CPACK_WIX_PRODUCT_ICON "${BUILD_RESOURCES_DIR}/windows/theme/logo_48.ico")
+
       # set(CPACK_WIX_TEMPLATE "${BUILD_RESOURCES_DIR}/windows/wix/template.wxs.in")
       # set(CPACK_WIX_LICENSE_RTF "${BUILD_RESOURCES_DIR}/windows/wix/license.rtf")
       # set(CPACK_WIX_UI_BANNER "${BUILD_RESOURCES_DIR}/windows/wix/banner.bmp")
@@ -38,14 +36,17 @@ function(setup_package)
     endif()
 
     set(CPACK_NSIS_DISPLAY_NAME "${CMAKE_PROJECT_NAME}")
+    set(CPACK_NSIS_UNINSTALL_NAME "uninstall_${CPACK_PACKAGE_NAME}")
     set(CPACK_NSIS_CONTACT "${CPACK_PACKAGE_CONTACT}")
-    set(CPACK_NSIS_MODIFY_PATH TRUE)
+    set(CPACK_NSIS_MODIFY_PATH OFF)
+    set(CPACK_NSIS_EXECUTABLES_DIRECTORY "bin")
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL TRUE)
-    set(CPACK_NSIS_MUI_FINISHPAGE_RUN "bin/${MAIN_EXECUTABLE_NAME}.exe")
-    set(CPACK_NSIS_MUI_FINISHPAGE_RUN_TEXT "Launch ${MAIN_EXECUTABLE_NAME}.exe")
+    set(CPACK_NSIS_BRANDING_TEXT "${CPACK_PACKAGE_NAME} installer")
+    SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+    set(CPACK_NSIS_MUI_FINISHPAGE_RUN "${MAIN_EXECUTABLE_NAME}.exe")
+    set(CPACK_NSIS_MUI_ICON "${BUILD_RESOURCES_DIR}/windows/theme/logo_48.ico")
+    set(CPACK_NSIS_MUI_UNIICON "${BUILD_RESOURCES_DIR}/windows/theme/logo_48.ico")
 
-  # set(CPACK_NSIS_MUI_ICON "${BUILD_RESOURCES_DIR}/windows/installer.ico")
-  # set(CPACK_NSIS_MUI_UNICON "${BUILD_RESOURCES_DIR}/windows/uninstaller.ico")
   elseif(TARGET_OS_NAME MATCHES "darwin")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
 

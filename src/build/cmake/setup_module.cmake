@@ -1,8 +1,5 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 function(setup_module module_name objects_name)
-  set(multi_value_args INCLUDE_DIRS LINK_DIRS COMPILE_OPTIONS LINK_OPTIONS)
+  set(multi_value_args INCLUDE_DIRS LINK_DIRS COMPILE_OPTIONS LINK_OPTIONS LINK_LIBS)
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
   string(TOUPPER ${module_name} UPPER_MODULE_NAME)
@@ -15,6 +12,10 @@ function(setup_module module_name objects_name)
 
   if(ARG_LINK_DIRS)
     target_link_directories(${objects_name} PRIVATE ${ARG_LINK_DIRS})
+  endif()
+
+  if(ARG_LINK_LIBS)
+    target_link_libraries(${objects_name} PRIVATE ${ARG_LINK_LIBS})
   endif()
 
   if(ARG_COMPILE_OPTIONS)
@@ -30,7 +31,7 @@ function(setup_module module_name objects_name)
   )
 
   set(build_option_name BUILD_${UPPER_MODULE_NAME}_SHARED)
-  option(${build_option_name} "Build ${module_name} as shared lib" ${BUILD_SHARED})
+  option(${build_option_name} "build ${module_name} as shared lib" ${BUILD_SHARED})
 
   if(${${build_option_name}})
     add_library(${module_name} SHARED $<TARGET_OBJECTS:${objects_name}>)
@@ -46,6 +47,10 @@ function(setup_module module_name objects_name)
 
   if(ARG_LINK_DIRS)
     target_link_directories(${module_name} PRIVATE ${ARG_LINK_DIRS})
+  endif()
+
+  if(ARG_LINK_LIBS)
+    target_link_libraries(${module_name} PRIVATE ${ARG_LINK_LIBS})
   endif()
 
   if(ARG_COMPILE_OPTIONS)
@@ -66,10 +71,21 @@ function(setup_module module_name objects_name)
     )
   endif()
 
-  # install
-  install(
-    TARGETS ${module_name}
-    RUNTIME
-    COMPONENT Runtime
-  )
+  set(install_option_name INSTALL_${UPPER_MODULE_NAME})
+  option(${install_option_name} "install ${module_name}" ${INSTALL_LIBS})
+
+  if(${INSTALL_LIBS} AND ${${install_option_name}})
+    install(
+      TARGETS ${module_name}
+      RUNTIME
+      COMPONENT Runtime
+    )
+
+    install(
+      FILES "$<TARGET_FILE_DIR:${module_name}>/${module_name}.pdb" "$<TARGET_FILE_DIR:${module_name}>/${module_name}d.pdb"
+      DESTINATION bin
+      COMPONENT Runtime
+      OPTIONAL
+    )
+  endif()
 endfunction()

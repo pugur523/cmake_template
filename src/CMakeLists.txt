@@ -1,6 +1,3 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 set(CMAKE_C_STANDARD ${PROJECT_C_VERSION_FROM_CONFIG})
 set(CMAKE_CXX_STANDARD ${PROJECT_CXX_VERSION_FROM_CONFIG})
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -39,8 +36,13 @@ else()
 endif()
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} lower_build_type)
-option(BUILD_SHARED "build .so/.dll/.dylib - shared libraries" TRUE)
-option(BUILD_TESTING "whether build testing module or not" TRUE)
+option(BUILD_PROGRAM "build standalone executable" TRUE)
+option(BUILD_LIBS "build libraries" TRUE)
+option(INSTALL_PROGRAM "install standalone executable" TRUE)
+option(INSTALL_LIBS "install libraries" TRUE)
+option(BUILD_SHARED "build libraries as shared" TRUE)
+option(BUILD_TESTING "build testing module" TRUE)
+option(INSTALL_TESTING "install testing module" FALSE)
 
 string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} lower_arch)
 string(TOLOWER ${CMAKE_SYSTEM_NAME} lower_os_name)
@@ -48,26 +50,38 @@ string(TOLOWER ${CMAKE_SYSTEM_NAME} lower_os_name)
 set(TARGET_ARCH_NAME ${lower_arch} CACHE STRING "target architecture name in lower case")
 set(TARGET_OS_NAME ${lower_os_name} CACHE STRING "target os name in lower case")
 
+string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} HOST_ARCH_NAME)
+string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} HOST_OS_NAME)
+
+option(ENABLE_VERBOSE "enable detailed build information" TRUE)
 option(ENABLE_LTO "enable link time optimization" TRUE)
 option(ENABLE_NATIVE_ARCH "enable optimization for native architecture" TRUE)
 
 option(ENABLE_BUILD_REPORT "generate the report for optimization, build time, etc." TRUE)
-option(ENABLE_PROFILE "enable profile using -fprofile-instr-generate and llvm-cov. runs main app and test on post build if available." FALSE)
+option(ENABLE_COVERAGE "enable coverage using -fprofile-instr-generate and llvm-cov. runs main app and test on post build if available." FALSE)
 option(ENABLE_OPTIMIZATION_REPORT "generate optimization report" FALSE)
-option(ENABLE_XRAY "enable llvm-xray. not compatible with windows build, debug build, address sanitizers" FALSE)
+option(ENABLE_XRAY "enable llvm-xray. not compatible with windows build, debug build, address sanitizers. runs main app and test on post build if available." FALSE)
 option(ENABLE_SANITIZERS "enable address and undefined sanitizers" TRUE)
 
 option(ENABLE_RUN_APP_POST_BUILD "enable running app post build" FALSE)
 option(ENABLE_RUN_TESTS_POST_BUILD "enable running tests post build" TRUE)
 
+option(WARNINGS_AS_ERRORS "treat warnings as errors" TRUE)
+
+if(ENABLE_OPTIMIZATION_REPORT AND HOST_OS_NAME MATCHES "windows")
+  message(WARNING "ENABLE_OPTIMIZATION_REPORT on Windows build is not supported.")
+  message(WARNING "set ENABLE_OPTIMIZATION_REPORT to false forcely.")
+  set(ENABLE_OPTIMIZATION_REPORT FALSE)
+endif()
+
 if(ENABLE_XRAY AND MINGW_BUILD)
-  message(WARNING "ENABLE_XRAY for mingw build is not supported.")
+  message(WARNING "ENABLE_XRAY for MinGW build is not supported.")
   message(WARNING "set ENABLE_XRAY to false forcely.")
   set(ENABLE_XRAY FALSE)
 endif()
 
 if(ENABLE_XRAY AND TARGET_OS_NAME MATCHES "windows")
-  message(WARNING "ENABLE_XRAY for windows build is not supported.")
+  message(WARNING "ENABLE_XRAY for Windows build is not supported.")
   message(WARNING "set ENABLE_XRAY to false forcely.")
   set(ENABLE_XRAY FALSE)
 endif()
@@ -77,8 +91,6 @@ if(ENABLE_XRAY AND ENABLE_SANITIZERS)
   message(WARNING "set ENABLE_SANITIZERS to false forcely.")
   set(ENABLE_SANITIZERS FALSE)
 endif()
-
-option(WARNINGS_AS_ERRORS "treat warnings as errors" TRUE)
 
 set(ADDITIONAL_INCLUDE_DIRECTORIES "" CACHE STRING "additional include directories to apply whole the project")
 set(ADDITIONAL_LINK_DIRECTORIES "" CACHE STRING "additional link directories to apply whole the project")
@@ -114,6 +126,7 @@ set(PROJECT_INCLUDE_DIRECTORIES
   ${LLVM_INCLUDE_DIRS}
   ${TOML11_INCLUDE_DIR}
   ${ZLIB_INCLUDE_DIR}
+  ${ZSTD_INCLUDE_DIR}
   ${ADDITIONAL_INCLUDE_DIRECTORIES}
 )
 
@@ -123,11 +136,14 @@ set(PROJECT_LINK_DIRECTORIES
 )
 
 set(PROJECT_LINK_LIBRARIES
+  ${MINGW_LINK_LIBRARIES}
   ${LLVM_LINK_LIBRARIES}
+  ${WINDOWS_LINK_LIBRARIES}
   ${ADDITIONAL_LINK_LIBRARIES}
 )
 
-message("${Green}
+if(ENABLE_VERBOSE)
+  message("${Green}
 -=-=-=-=-=-= CMake build status -=-=-=-=-=-=-
 cmake version : ${CMAKE_VERSION}
 project name: ${CMAKE_PROJECT_NAME}, project version: ${CMAKE_PROJECT_VERSION}
@@ -136,9 +152,10 @@ c language version: ${CMAKE_C_STANDARD}, c++ language version: ${CMAKE_CXX_STAND
 c compiler: ${CMAKE_C_COMPILER} (ver: ${CMAKE_C_COMPILER_VERSION})
 c++ compiler: ${CMAKE_CXX_COMPILER} (ver: ${CMAKE_CXX_COMPILER_VERSION})
 build type: ${CMAKE_BUILD_TYPE}
-host system name: ${CMAKE_HOST_SYSTEM_NAME}
-target system name: ${CMAKE_SYSTEM_NAME}
-target arch: ${CMAKE_SYSTEM_PROCESSOR}
+host os name: ${HOST_OS_NAME}
+host arch name: ${HOST_ARCH_NAME}
+target os name: ${TARGET_OS_NAME}
+target arch name: ${TARGET_ARCH_NAME}
 include directories: ${PROJECT_INCLUDE_DIRECTORIES}
 link directories: ${PROJECT_LINK_DIRECTORIES}
 link libraries: ${PROJECT_LINK_LIBRARIES}
@@ -149,12 +166,18 @@ build resources dir: ${BUILD_RESOURCES_DIR}
 is mingw build: ${MINGW_BUILD}
 toolchain file: ${CMAKE_TOOLCHAIN_FILE}
 build debug: ${BUILD_DEBUG}
+build program: ${BUILD_PROGRAM}
+build libs: ${BUILD_LIBS}
+install program: ${INSTALL_PROGRAM}
+install libs: ${INSTALL_LIBS}
 build shared: ${BUILD_SHARED}
 build testing: ${BUILD_TESTING}
+install testing: ${INSTALL_TESTING}
+enable verbose: ${ENABLE_VERBOSE}
 enable lto: ${ENABLE_LTO}
 enable native arch: ${ENABLE_NATIVE_ARCH}
 generate build report: ${ENABLE_BUILD_REPORT}
-enable profile: ${ENABLE_PROFILE}
+enable profile: ${ENABLE_COVERAGE}
 enable optimization report: ${ENABLE_OPTIMIZATION_REPORT}
 enable xray: ${ENABLE_XRAY}
 enable sanitizers: ${ENABLE_SANITIZERS}
@@ -162,10 +185,16 @@ enable run app post build: ${ENABLE_RUN_APP_POST_BUILD}
 enable run tests post build: ${ENABLE_RUN_TESTS_POST_BUILD}
 warnings as errors: ${WARNINGS_AS_ERRORS}
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-${ColourReset}")
-print_all_build_flags()
+  print_all_build_flags()
+endif()
 
-add_subdirectory(app)
-add_subdirectory(core)
+if(BUILD_PROGRAM)
+  add_subdirectory(app)
+endif()
+
+if(BUILD_LIBS)
+  add_subdirectory(core)
+endif()
 
 if(BUILD_TESTING)
   setup_gtest()

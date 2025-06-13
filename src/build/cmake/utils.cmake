@@ -1,6 +1,3 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 string(ASCII 27 Esc)
 set(ColourReset "${Esc}[m")
 set(ColourBold "${Esc}[1m")

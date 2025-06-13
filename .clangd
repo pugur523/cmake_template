@@ -1,5 +1,2 @@
-Diagnostics:
-  UnusedIncludes: None
-  MissingIncludes: None
 CompileFlags:
-  Remove: [-cfg=*, -exec_root=*, -inputs=*, -DUNSAFE_BUFFERS_BUILD]
+  Remove: [-cfg=*, -exec_root=*, -inputs=*]

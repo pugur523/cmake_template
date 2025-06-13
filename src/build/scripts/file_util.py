@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-# Copyright 2025 pugur
-# All rights reserved.
-
-
 import os
 import shutil
 import sys

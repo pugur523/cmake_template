@@ -1,6 +1,3 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_VERSION 1)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)
@@ -33,9 +30,8 @@ set(CMAKE_OBJDUMP "${OBJDUMP_PATH}")
 set(CMAKE_RC_COMPILER "${RC_PATH}")
 set(CMAKE_STRIP "${STRIP_PATH}")
 
-# Linker flags - use lld
-# set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld")
-# set(CMAKE_SHARED_LINKER_FLAGS_INIT "-fuse-ld=lld")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld")
+set(CMAKE_SHARED_LINKER_FLAGS_INIT "-fuse-ld=lld")
 
 # Search paths
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)

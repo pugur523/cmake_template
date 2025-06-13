@@ -1,5 +1,5 @@
 [project]
-project_name="SampleProject"
+name="SampleProject"
 main_executable_name="sample_project"
 version="0.0.0"
 description="this is a cmake-template sample project"

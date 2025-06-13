@@ -1,6 +1,3 @@
-// Copyright 2025 pugur
-// All rights reserved.
-
 #include "app/init_handler.h"
 
 #include "build/build_flag.h"

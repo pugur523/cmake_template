@@ -1,9 +1,5 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 cmake_policy(SET CMP0177 NEW)
 include(FetchContent)
-include(GNUInstallDirs) # For ${CMAKE_INSTALL_BINDIR}
 
 function(setup_zlib)
 endfunction()
@@ -21,7 +17,7 @@ macro(setup_gtest)
   set(BUILD_GMOCK TRUE)
 
   # For Windows: Prevent overriding the parent project's compiler/linker settings
-  set(gtest_force_shared_crt ${BUILD_SHARED})
+  set(gtest_force_shared_crt TRUE)
 
   add_subdirectory(${GTEST_ROOT_DIR})
 
@@ -55,9 +51,11 @@ macro(setup_llvm)
 
     message(STATUS "Found LLVM ${LLVM_VERSION} using ${LLVM_CONFIG_EXECUTABLE}")
 
-    add_compile_definitions(USE_LLVM_UNWIND=1)
-
     list(APPEND PROJECT_LINK_OPTIONS -unwindlib=libunwind -rtlib=compiler-rt)
+
+    add_compile_definitions(ENABLE_LLVM_UNWIND=1)
+  else()
+    add_compile_definitions(ENABLE_LLVM_UNWIND=0)
   endif()
 
   if(MINGW_BUILD)
@@ -89,15 +87,15 @@ macro(setup_zlib)
   set(ZLIB_INCLUDE_DIR ${ZLIB_DIR})
 
   set(ZLIB_BUILD_TESTING FALSE)
-  set(ZLIB_BUILD_SHARED FALSE)
   set(ZLIB_BUILD_STATIC TRUE)
+  set(ZLIB_BUILD_SHARED FALSE)
   set(ZLIB_INSTALL FALSE)
+
+  set(ZLIB_LIBRARIES zlibstatic)
 
   add_subdirectory(${ZLIB_DIR})
 
-  set(ZLIB_LIBRARIES toml11)
-
-  set_target_properties(${TOML11_LIBRARIES}
+  set_target_properties(${ZLIB_LIBRARIES}
     PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE
   )

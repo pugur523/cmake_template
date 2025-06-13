@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# Copyright 2025 pugur
-# All rights reserved.
-
 """
 A script to scan through all build artifacts and generate an artifact summary
 table for GitHub Actions step summary.

@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Copyright 2025 pugur
-# All rights reserved.
-
 set -e
 
 scripts_dir=$(cd $(dirname $0) && pwd)

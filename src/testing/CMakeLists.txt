@@ -1,13 +1,12 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
-message(STATUS "Configuring testing module...")
-
 set(TEST_NAME ${MAIN_EXECUTABLE_NAME_FROM_CONFIG}_test)
+
+message(STATUS "Configuring ${TEST_NAME}...")
 
 set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/test_main.cc
   ${PROJECT_SOURCE_DIR}/app/sample_test.cc
+  ${PROJECT_SOURCE_DIR}/core/location_test.cc
+  ${PROJECT_SOURCE_DIR}/core/diagnostics/system_info_test.cc
 )
 
 add_executable(${TEST_NAME} ${SOURCES})
@@ -22,7 +21,7 @@ set_target_properties(${TEST_NAME} PROPERTIES
   POSITION_INDEPENDENT_CODE TRUE
 )
 
-if(ENABLE_PROFILE AND ENABLE_RUN_TESTS_POST_BUILD)
+if(ENABLE_COVERAGE AND ENABLE_RUN_TESTS_POST_BUILD)
   if(MINGW_BUILD)
     set(EXE_COMMAND wine $<TARGET_FILE:${TEST_NAME}>)
   else()
@@ -62,25 +61,29 @@ if(ENABLE_XRAY AND ENABLE_RUN_TESTS_POST_BUILD)
   )
 endif()
 
-install(
-  TARGETS ${TEST_NAME}
-  RUNTIME
-  COMPONENT Runtime
-)
+if(INSTALL_TESTING)
+  install(
+    TARGETS ${TEST_NAME}
+    RUNTIME
+    COMPONENT Runtime
+  )
+
+  install(
+    FILES "${CMAKE_PDB_OUTPUT_DIRECTORY}/${TEST_NAME}.pdb"
+    DESTINATION bin
+    COMPONENT Runtime
+    OPTIONAL
+  )
+endif()
 
 add_test(
   NAME ${TEST_NAME}
   COMMAND ${TEST_NAME}
 )
 
-install(
-  FILES "${CMAKE_PDB_OUTPUT_DIRECTORY}/${TEST_NAME}.pdb"
-  DESTINATION bin
-  COMPONENT Runtime
-  OPTIONAL
-)
-
-describe_target(${TEST_NAME})
+if(ENABLE_VERBOSE)
+  describe_target(${TEST_NAME})
+endif()
 
 # Commentout the following 2 lines if you don't want to run tests on post build
 # include(GoogleTest)

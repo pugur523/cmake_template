@@ -1,6 +1,3 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 name: build
 
 on:
@@ -144,7 +141,7 @@ jobs:
           choco install llvm --version=${{ matrix.llvm_version }} -y
           choco install python3 nsis wixtoolset ninja -y
 
-      - name: Install dependencies (macOS)
+      - name: Install dependencies (MacOS)
         if: matrix.target_platform == 'darwin'
         run: |
           brew update
@@ -186,7 +183,6 @@ jobs:
           python3 -u ./src/build/scripts/build.py \
             --build_mode=all \
             --target_platform=${{ matrix.target_platform }} \
-            --no-clang_tidy \
             --extra_args="-DBUILD_CORE_SHARED=true,-DENABLE_BUILD_REPORT=false"
         shell: cmd
 

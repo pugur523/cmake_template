@@ -1,6 +1,3 @@
-# Copyright 2025 pugur
-# All rights reserved.
-
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)
 
