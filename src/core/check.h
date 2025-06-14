@@ -55,7 +55,7 @@ class CORE_EXPORT CheckFailureStream {
                      int line,
                      const char* condition);
   ~CheckFailureStream();
-  const std::ostream& stream();
+  std::ostream& stream();
 
  private:
   const char* type_;

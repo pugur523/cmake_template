@@ -4,7 +4,7 @@
 
 namespace core {
 
-TEST(system_info, basic) {
+TEST(SystemInfoTest, BasicSystemInfo) {
   SystemInfo info;
   EXPECT_FALSE(info.os().empty());
   EXPECT_FALSE(info.cpu_arch().empty());

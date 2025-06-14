@@ -4,8 +4,9 @@ message(STATUS "Configuring ${TEST_NAME}...")
 
 set(SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/test_main.cc
-  ${PROJECT_SOURCE_DIR}/app/sample_test.cc
   ${PROJECT_SOURCE_DIR}/core/location_test.cc
+  ${PROJECT_SOURCE_DIR}/core/base/range_test.cc
+  ${PROJECT_SOURCE_DIR}/core/base/vec_test.cc
   ${PROJECT_SOURCE_DIR}/core/diagnostics/system_info_test.cc
 )
 
@@ -85,6 +86,5 @@ if(ENABLE_VERBOSE)
   describe_target(${TEST_NAME})
 endif()
 
-# Commentout the following 2 lines if you don't want to run tests on post build
 # include(GoogleTest)
 # gtest_discover_tests(${TEST_NAME})

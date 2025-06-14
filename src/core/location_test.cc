@@ -16,31 +16,31 @@ void verify_loop() {
 
     std::ostringstream oss;
     EXPECT_EQ(&oss, &(oss << location));
-    EXPECT_FALSE(location.stack_trace().empty());
+    EXPECT_NE(location.stack_trace(), nullptr);
     return;
   }
   verify_loop();
 }
 
 void verify_transfer(Location&& location) {
-  EXPECT_FALSE(location.stack_trace().empty());
+  EXPECT_NE(location.stack_trace(), nullptr);
 }
 
 }  // namespace
 
-TEST(location, basic_stack_trace) {
+TEST(LocationTest, BasicStackTrace) {
   Location location = FROM_HERE;
 
   std::ostringstream oss;
   EXPECT_EQ(&oss, &(oss << location));
-  EXPECT_FALSE(location.stack_trace().empty());
+  EXPECT_NE(location.stack_trace(), nullptr);
 }
 
-TEST(location, loop_stack_trace) {
+TEST(LocationTest, LoopStackTrace) {
   verify_loop();
 }
 
-TEST(location, transfer_stack_trace) {
+TEST(LocationTest, TransferStackTrace) {
   verify_transfer(FROM_HERE);
 }
 

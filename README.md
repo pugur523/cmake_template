@@ -1,15 +1,14 @@
 <h1 align=center>
-  <img src="src/build/resources/assets/logo_1080.png" width=256 alt="CMake Template">
+  <img src="src/build/resources/assets/logo_1080.png" width=192 alt="CMake Template">
   <br/>
-  <a href="https://github.com/pugur523/cmake_template">
-    CMake Template
-  </a>
+  CMake Template
 </h1>
 
 [![Build](https://github.com/pugur523/cmake_template/actions/workflows/build.yml/badge.svg)](https://github.com/pugur523/cmake_template/actions/workflows/build.yml)
+[![Issues](https://img.shields.io/github/issues/pugur523/cmake_template.svg)](https://github.com/pugur523/cmake_template/issues)
 [![License](https://img.shields.io/badge/License-Apache%20License%20Version%202.0-red)](LICENSE)
-[![C](https://img.shields.io/badge/C-17-blue?logo=c)](https://www.c-language.org/)
-[![C++](https://img.shields.io/badge/C++-17-blue?logo=cplusplus)](https://isocpp.org/)
+[![C](https://img.shields.io/badge/C-blue?logo=c)](https://www.c-language.org/)
+[![C++](https://img.shields.io/badge/C++-blue?logo=cplusplus)](https://isocpp.org/)
 [![LLVM](https://img.shields.io/badge/LLVM-21-orange?logo=llvm)](https://llvm.org/docs/index.html)
 [![CMake](https://img.shields.io/badge/CMake-4.0.2+-green?logo=cmake)](https://cmake.org/)
 <br/>
@@ -36,6 +35,7 @@ It leverages LLVM tools to provide a lightweight, highly optimized C/C++ build s
   - [How to Add a Module](#how-to-add-a-module)
   - [Customize Build Arguments](#customize-build-arguments)
   - [Profile Performance of Your Program](#profile-performance-of-your-program)
+- [Distributing Build Artifacts](#distributing-build-artifacts)
 
 ## Features
 
@@ -338,15 +338,15 @@ If submodules are not set up correctly, you will get an error, so please initial
 
 ```toml
 [project]
-name="CMakeTemplate"
-main_executable_name="cmake_template"
-version="1.2.3"
-description="a all-in-one cmake template"
-homepage="https://github.com/pugur523/cmake_template"
-c_version="17"
-cxx_version="17"
-author="pugur"
-author_email="pugurmc@gmail.com"
+name = "CMakeTemplate"
+main_executable_name = "cmake_template"
+version = "1.2.3"
+description = "a all-in-one cmake template"
+homepage = "https://github.com/pugur523/cmake_template"
+c_version = "17"
+cxx_version = "17"
+author = "pugur"
+author_email = "pugurmc@gmail.com"
 ```
 
 </details>
@@ -418,7 +418,7 @@ $ python3 ./src/build/scripts/build.py \
 
 <details open>
   <summary>
-    On Linux, build both debug and release types and obtain various optimization-related information during the build
+    On Linux, build debug type and obtain various optimization-related information during the build
   </summary>
 
 ```shell
@@ -449,7 +449,6 @@ $ python3 ./src/build/scripts/build.py \
 
 ```shell
 $ python3 ./src/build/scripts/build.py \
-    --build_mode=debug \
     --extra_args="-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTS_POST_BUILD=true"
 ```
 
@@ -464,3 +463,10 @@ As shown in the [Customize Build Arguments](#customize-build-arguments) section,
 * `xray/<project_name>/xray_trace.<project_name>.json`
 
 You can view `index.html` in your browser with a UI, and open `xray_trace.<project_name>.json` in Chromium-based browsers via [about:tracing](chrome://tracing/). For details, refer to the official documentation for llvm-cov, llvm-opt-viewer, llvm-xray, and [Chromium's trace event profiling tool documentation](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/).
+
+## Distributing Build Artifacts
+The build artifacts are placed in the `//out/install/<platform>/<arch>/<build_type>` directory.
+Additionally, installers packaged from these artifacts are generated in the `//out/build/<platform>/<arch>/<build_type>/package directory`.
+
+To distribute your application, release the installer files such as `.exe`, `.zip`, `.tar.gz`, `.deb`, or `.dmg` found in the latter directory.
+Users can download the installer appropriate for their environment and install the build artifacts using the standard method for each format.

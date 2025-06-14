@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     print("{:24s} {:10d}".format("Total number of remarks", total))
     if hp:
         h = hp.heap()
-        print("{:24s} {:10d}".format("Memory per remark", h.size / len(all_remarks)))
+        print("{:24s} {:10.2f}".format("Memory per remark", h.size / len(all_remarks)))
     print("\n")
 
     print("Top 10 remarks by pass:")

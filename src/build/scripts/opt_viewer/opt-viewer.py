@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 
@@ -351,12 +351,12 @@ def generate_report(
         sorted_remarks = sorted(
             optrecord.itervalues(all_remarks),
             key=lambda r: (
-                r.File,
-                r.Line,
-                r.Column,
-                r.PassWithDiffPrefix,
-                r.yaml_tag,
-                r.Function,
+                r.File or '',
+                r.Line or 0,
+                r.Column or 0,
+                r.PassWithDiffPrefix or '',
+                r.yaml_tag or '',
+                r.Function or '',
             ),
         )
     IndexRenderer(

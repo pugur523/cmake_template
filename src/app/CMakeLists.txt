@@ -4,8 +4,9 @@ message(STATUS "Configuring ${MAIN_EXECUTABLE_NAME}...")
 
 set(COMMON_SOURCES
   app.cc
-  prelaunch_handler.cc
+  cli_handler.cc
   init_handler.cc
+  preinit_handler.cc
 )
 
 set(WINDOWS_SOURCES
@@ -23,7 +24,7 @@ if(TARGET_OS_NAME MATCHES "windows")
     ${WINDOWS_SOURCES}
   )
 
-  # If you don't want to show console, use WIN32 instead.
+  # If you don't want to show console, use WIN32 subsystem.
   # add_executable(${MAIN_EXECUTABLE_NAME} WIN32 ${SOURCES})
   add_executable(${MAIN_EXECUTABLE_NAME} ${SOURCES})
 
@@ -124,6 +125,12 @@ if(INSTALL_PROGRAM)
     COMPONENT Runtime
     OPTIONAL
   )
+
+  # install(
+  #   TARGETS ${MAIN_EXECUTABLE_NAME}
+  #   RUNTIME_DEPENDENCY_SET "${MAIN_EXECUTABLE_NAME}_runtime_deps"
+  # )
+  # install(RUNTIME_DEPENDENCY_SET "${MAIN_EXECUTABLE_NAME}_runtime_deps")
 endif()
 
 if(ENABLE_VERBOSE)

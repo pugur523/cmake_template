@@ -3,7 +3,7 @@
 
 namespace app {
 
-int start();
+int start(int argc, char** argv);
 
 }  // namespace app
 

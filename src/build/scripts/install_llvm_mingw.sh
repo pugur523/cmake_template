@@ -22,14 +22,8 @@ tar xf "$download_path" -C "$scripts_dir" && rm $download_path
 sudo rm -rf "$install_dir"
 sudo mv -f "$scripts_dir/${main_name}" "$install_dir"
 
-# echo "Adding $install_dir/bin to PATH"
-export LIB="${LIB}:${install_dir}/x86_64-w64-mingw32/lib"
-export PATH="${PATH}:${install_dir}/x86_64-w64-mingw32/lib"
-export PATH="${PATH}:${install_dir}/bin:${install_dir}/x86_64-w64-mingw32/bin"
-echo "export PATH=\$PATH:${install_dir}/x86_64-w64-mingw32/lib:$install_dir/bin:${install_dir}/x86_64-w64-mingw32/bin" >>"$HOME/.bashrc"
-# echo "export PATH=\$PATH:$install_dir/bin:${install_dir}/x86_64-w64-mingw32/bin:${install_dir}/x86_64-w64-mingw32/lib:${install_dir}/x86_64-w64-mingw32/include" >>"$HOME/.bashrc"
-
-echo $PATH
+export LLVM_MINGW_DIR=${install_dir}
+echo $LLVM_MINGW_DIR
 
 # echo "Installation complete!"
 # echo "To use llvm-mingw, restart your terminal or run: source ~/.bashrc"

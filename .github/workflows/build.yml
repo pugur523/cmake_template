@@ -65,17 +65,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Setup build cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            out/build
-            ~/.cache/pip
-          key: ${{ runner.os }}-${{ matrix.target_platform }}-${{ hashFiles('**/CMakeLists.txt', 'src/**/*.cc', 'src/**/*.cpp', 'src/**/*.c', 'src/**/*.h', 'src/**/*.hpp', '.gitmodules', 'src/build/scripts/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.target_platform }}-
-            ${{ runner.os }}-
-
       - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -88,12 +77,6 @@ jobs:
             ca-certificates \
             git \
             ninja-build
-          
-          # sudo apt-get install -y \
-          #   nasm \
-          #   yasm \
-          #   make \
-          #   pkg-config
 
           # Install CMake
           CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v${{ env.CMAKE_VERSION }}/cmake-${{ env.CMAKE_VERSION }}-linux-x86_64.sh"
@@ -118,28 +101,33 @@ jobs:
           sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${{ matrix.llvm_version }} 100
           sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${{ matrix.llvm_version }} 100
           sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-${{ matrix.llvm_version }} 100
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-${{ matrix.llvm_version }} 100
 
           sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.llvm_version }}
           sudo update-alternatives --set clang++ /usr/bin/clang++-${{ matrix.llvm_version }}
           sudo update-alternatives --set clang-tidy /usr/bin/clang-tidy-${{ matrix.llvm_version }}
+          sudo update-alternatives --set clang-format /usr/bin/clang-format-${{ matrix.llvm_version }}
 
           clang --version
           clang++ --version
           clang-tidy --version
+          clang-format --version
 
       - name: Install dependencies (MinGW)
         if: matrix.target_platform == 'mingw'
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update && sudo apt-get install -y nsis wine wine32
-          echo $(./src/build/scripts/install_llvm_mingw.sh) >> $GITHUB_PATH
+          source ./src/build/scripts/install_llvm_mingw.sh
+          echo "LLVM_MINGW_DIR=${LLVM_MINGW_DIR}" >> $GITHUB_ENV
+          echo "LLVM_MINGW_DIR resolved to: ${LLVM_MINGW_DIR}"
 
       - name: Install dependencies (Windows)
         if: matrix.target_platform == 'windows'
         run: |
-          choco install cmake --version=${{ env.CMAKE_VERSION }} --installargs 'ADD_CMAKE_TO_PATH=System' -y
-          choco install llvm --version=${{ matrix.llvm_version }} -y
-          choco install python3 nsis wixtoolset ninja -y
+          choco install --no-progress cmake --version=${{ env.CMAKE_VERSION }} --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          choco install --no-progress llvm --version=${{ matrix.llvm_version }} -y
+          choco install --no-progress nsis wixtoolset ninja -y
 
       - name: Install dependencies (MacOS)
         if: matrix.target_platform == 'darwin'
@@ -169,9 +157,10 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           python3 -u src/build/scripts/build.py \
-            --build_mode=all \
+            --build_mode=release \
             --target_platform=${{ matrix.target_platform }} \
-            --extra_args="-DBUILD_CORE_SHARED=true,-DENABLE_BUILD_REPORT=false"
+            --no-install \
+            --extra_args="-DBUILD_CORE_SHARED=true,-DENABLE_XRAY=false,-DENABLE_SANITIZERS=false,-DENABLE_BUILD_REPORT=false,-DENABLE_LTO=true,-DENABLE_NATIVE_ARCH=true,-DENABLE_LLVM_UNWIND=true,-DENABLE_VERBOSE=true,-DENABLE_COVERAGE=false,-DWARNINGS_AS_ERRORS=false"
 
 
       - name: Run build script (Windows)
@@ -180,27 +169,19 @@ jobs:
           call "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath > path.txt
           set /p InstallPath=<path.txt
           call "%InstallPath%\VC\Auxiliary\Build\vcvarsall.bat" x64
-          python3 -u ./src/build/scripts/build.py \
-            --build_mode=all \
-            --target_platform=${{ matrix.target_platform }} \
-            --extra_args="-DBUILD_CORE_SHARED=true,-DENABLE_BUILD_REPORT=false"
+          python3 -u src/build/scripts/build.py --build_mode=release --target_platform=${{ matrix.target_platform }} --no-install --extra_args="-DBUILD_CORE_SHARED=true,-DENABLE_XRAY=false,-DENABLE_SANITIZERS=false,-DENABLE_BUILD_REPORT=false,-DENABLE_LTO=true,-DENABLE_NATIVE_ARCH=true,-DENABLE_LLVM_UNWIND=true,-DENABLE_VERBOSE=true,-DENABLE_COVERAGE=false,-DWARNINGS_AS_ERRORS=false"
         shell: cmd
-
-      - name: Upload debug artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: debug-builds-${{ matrix.target_platform }}
-          path: out/install/*/*/debug/bin
-          retention-days: 1
-          if-no-files-found: warn
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         if: always()
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         with:
           name: release-builds-${{ matrix.target_platform }}
-          path: out/install/*/*/release/bin
+          path: |
+            out/build/**/release/package/**
+            !out/build/**/_CPack_Packages/**/*
           retention-days: 1
           if-no-files-found: warn
 
@@ -220,13 +201,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Download all debug artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: debug-builds-*
-          path: ./artifacts/debug/
-        continue-on-error: true
 
       - name: Download all release artifacts
         uses: actions/download-artifact@v4

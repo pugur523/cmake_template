@@ -3,14 +3,14 @@
 #include <algorithm>
 #include <cstdio>
 #include <string>
+#include <utility>
 
 #include "build/build_flag.h"
+#include "core/base/file_util.h"
+#include "core/base/string_util.h"
 #include "core/diagnostics/stack_trace_entry.h"
 
 #if IS_WINDOWS
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
 #define NOMINMAX
 // clang-format off
 #include <windows.h>
@@ -20,52 +20,36 @@
 #include <cxxabi.h>
 #include <dlfcn.h>
 #include <unistd.h>
-#if ENABLE_LLVM_UNWIND
-#include <libunwind.h>
-#else
-#include <execinfo.h>
 #endif
+
+#if ENABLE_LLVM_UNWIND && !COMPILER_MSVC
+#include <libunwind.h>
+#elif IS_UNIX
+#include <execinfo.h>
 #endif
 
 namespace core {
 
 namespace {
 
-constexpr std::size_t kLineBufferSize = 1024;
-#if IS_UNIX
-constexpr std::size_t kSymbolBufferSize = 512;
-constexpr std::size_t kDemangledBufferSize = 512;
-#endif
-
-}  // namespace
-
-void stack_trace_entries_to_string(
-    const StackTraceEntry entries[kPlatformMaxFrames],
-    std::size_t count,
-    std::string* out) {
-  char line_buffer[1024];
-  for (std::size_t i = 0; i < count; ++i) {
-    entries[i].to_string(line_buffer, sizeof(line_buffer));
-    out->append(line_buffer);
-    out->push_back('\n');
-  }
-}
-
 void stack_trace_entries_to_buffer(
     const StackTraceEntry entries[kPlatformMaxFrames],
     std::size_t count,
     char* buffer,
     std::size_t buffer_size) {
+  if (!buffer || buffer_size == 0) {
+    return;
+  }
+
   char line_buffer[kLineBufferSize];
   std::size_t written = 0;
 
   for (std::size_t i = 0; i < count && written < buffer_size - 1; ++i) {
     entries[i].to_string(line_buffer, sizeof(line_buffer));
-    std::size_t line_len = std::strlen(line_buffer);
+    std::size_t line_len = safe_strlen(line_buffer);
 
     if (written + line_len + 1 < buffer_size) {
-      std::snprintf(buffer + written, sizeof(buffer + written), "%s",
-                    line_buffer);
+      std::snprintf(buffer + written, buffer_size - written, "%s", line_buffer);
       written += line_len;
       buffer[written++] = '\n';
     } else {
@@ -75,76 +59,282 @@ void stack_trace_entries_to_buffer(
   buffer[written] = '\0';
 }
 
-std::size_t collect_stack_trace(
-#if ENABLE_LLVM_UNWIND
-    unw_context_t* context,
-#endif
-    StackTraceEntry out[kPlatformMaxFrames],
-    bool use_index,
-    std::size_t first_frame,
-    std::size_t max_frames) {
-  max_frames = std::min(max_frames, kPlatformMaxFrames);
-  first_frame = std::min(first_frame, max_frames);
+#if IS_UNIX
+void format_address_safe(uintptr_t addr,
+                         char* buffer,
+                         std::size_t buffer_size) {
+  if (!buffer || buffer_size < 3) {
+    if (buffer && buffer_size > 0) {
+      buffer[0] = '\0';
+    }
+    return;
+  }
 
-#if ENABLE_LLVM_UNWIND
-  unw_cursor_t cursor;
-  if (unw_init_local(&cursor, context) != 0) {
+  // Use stack-based conversion to avoid any heap allocation
+  constexpr char hex_chars[] = "0123456789abcdef";
+  constexpr int addr_width = sizeof(void*) * 2;  // 16 for 64-bit, 8 for 32-bit
+
+  if (buffer_size <
+      static_cast<std::size_t>(addr_width + 3)) {  // "0x" + address + '\0'
+    buffer[0] = '\0';
+    return;
+  }
+
+  buffer[0] = '0';
+  buffer[1] = 'x';
+
+  // Convert address to hex string manually
+  for (int i = addr_width - 1; i >= 0; --i) {
+    buffer[2 + (addr_width - 1 - i)] = hex_chars[(addr >> (i * 4)) & 0xf];
+  }
+  buffer[addr_width + 2] = '\0';
+}
+
+const char* demangle_symbol_safe(const char* mangled_name,
+                                 char* demangled_buffer,
+                                 std::size_t buffer_size) {
+  if (!mangled_name || !demangled_buffer || buffer_size == 0) {
+    return mangled_name;
+  }
+
+  int status = 0;
+  std::size_t demangled_len = buffer_size;
+
+  // Try to demangle - __cxa_demangle may allocate internally but we control the
+  // output buffer
+  char* demangled = abi::__cxa_demangle(mangled_name, demangled_buffer,
+                                        &demangled_len, &status);
+
+  // If demangling succeeded and the result fits in our buffer
+  if (demangled && status == 0 && demangled == demangled_buffer) {
+    return demangled_buffer;
+  }
+
+  // If demangling succeeded but used a different buffer, copy what we can
+  if (demangled && status == 0) {
+    write_raw(demangled_buffer, demangled, buffer_size);
+    free(demangled);  // __cxa_demangle allocated this
+    return demangled_buffer;
+  }
+
+  // Fallback to original mangled name
+  return mangled_name;
+}
+
+// Validate address range for Unix systems
+bool is_valid_address_unix(uintptr_t addr) {
+  // Skip NULL addresses and very low addresses (likely invalid)
+  if (addr == 0 || addr < 0x1000) {
+    return false;
+  }
+
+// Basic sanity check for user space addresses
+// This is a conservative check that should work on most Unix systems
+#if ARCH_X64
+  // 64-bit: user space typically below 0x800000000000
+  if (addr >= 0x800000000000ULL) {
+    return false;
+  }
+#elif ARCH_X86
+  // 32-bit: user space typically below 0xC0000000
+  if (addr >= 0xC0000000UL) {
+    return false;
+  }
+#endif
+
+  return true;
+}
+
+#endif  // IS_UNIX
+
+#if IS_WINDOWS
+void format_address_safe_win64(DWORD64 addr,
+                               char* buffer,
+                               std::size_t buffer_size) {
+  if (!buffer || buffer_size < 3) {
+    if (buffer && buffer_size > 0) {
+      buffer[0] = '\0';
+    }
+    return;
+  }
+
+  constexpr char hex_chars[] = "0123456789abcdef";
+  constexpr int addr_width = 16;  // 64-bit address width
+
+  if (buffer_size < addr_width + 3) {  // "0x" + address + '\0'
+    buffer[0] = '\0';
+    return;
+  }
+
+  buffer[0] = '0';
+  buffer[1] = 'x';
+
+  // Convert address to hex string manually
+  for (int i = addr_width - 1; i >= 0; --i) {
+    buffer[2 + (addr_width - 1 - i)] = hex_chars[(addr >> (i * 4)) & 0xf];
+  }
+  buffer[addr_width + 2] = '\0';
+}
+
+// Validate address range for Windows
+bool is_valid_address_win(DWORD64 addr) {
+  // Skip NULL addresses and very low addresses (likely invalid)
+  if (addr == 0 || addr < 0x10000) {
+    return false;
+  }
+
+  // Basic sanity check for 64-bit Windows user space
+  // User space is typically below 0x800000000000
+  if (addr >= 0x800000000000ULL) {
+    return false;
+  }
+
+  return true;
+}
+
+struct WindowsStackTraceHancler {
+  WindowsStackTraceHancler() {
+    DWORD sym_options = SymGetOptions();
+    sym_options |= SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME | SYMOPT_LOAD_LINES;
+    sym_options |= SYMOPT_FAIL_CRITICAL_ERRORS;  // Don't show error dialogs
+    sym_options &= ~SYMOPT_NO_PROMPTS;           // Disable prompts
+    SymSetOptions(sym_options);
+    SymInitialize(GetCurrentProcess(), get_exe_dir().c_str(), TRUE);
+  }
+
+  ~WindowsStackTraceHancler() { SymCleanup(GetCurrentProcess()); }
+};
+
+#endif  // IS_WINDOWS
+
+}  // namespace
+
+std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
+                                bool use_index,
+                                std::size_t first_frame,
+                                std::size_t max_frames) {
+  if (!out) {
     return 0;
   }
 
-  std::size_t i = 0;
-  char symbol[kSymbolBufferSize];
-  char address_buf[kAddressStrLength];
-  char demangled_buf[kDemangledBufferSize];
+  max_frames = std::min(max_frames, kPlatformMaxFrames);
+  first_frame = std::min(first_frame, max_frames);
 
-  std::size_t count = 0;
-  while (unw_step(&cursor) > 0 && count < max_frames) {
-    if (i++ < first_frame) {
+  if (first_frame >= max_frames) {
+    return 0;
+  }
+
+#if ENABLE_LLVM_UNWIND
+  unw_context_t context;
+  if (unw_getcontext(&context) != 0) {
+    return 0;
+  }
+
+  unw_cursor_t cursor;
+  if (unw_init_local(&cursor, &context) != 0) {
+    return 0;
+  }
+
+  char symbol_buffer[kSymbolBufferSize];
+  char address_buffer[kAddressStrLength];
+  char demangled_buffer[kDemangledBufferSize];
+
+  std::size_t frame_index = 0;
+  std::size_t collected_count = 0;
+
+  do {
+    if (frame_index < first_frame) {
+      ++frame_index;
       continue;
     }
 
-    unw_word_t addr;
-    if (unw_get_reg(&cursor, UNW_REG_IP, &addr) != 0) {
+    if (collected_count >= max_frames) {
       break;
     }
 
-    std::snprintf(address_buf, sizeof(address_buf), "0x%016lx",
-                  static_cast<std::size_t>(addr));
-    const char* addr_str = address_buf;
+    unw_word_t instruction_pointer = 0;
+    if (unw_get_reg(&cursor, UNW_REG_IP, &instruction_pointer) != 0) {
+      ++frame_index;
+      continue;
+    }
 
-    const char* function = "";
-    unw_word_t offset = 0;
+    // Validate address before processing
+    if (!is_valid_address_unix(static_cast<uintptr_t>(instruction_pointer))) {
+      ++frame_index;
+      continue;
+    }
 
-    if (unw_get_proc_name(&cursor, symbol, sizeof(symbol), &offset) == 0) {
-      int status;
-      std::size_t demangled_len = kDemangledBufferSize;
-      if (abi::__cxa_demangle(symbol, demangled_buf, &demangled_len, &status) !=
-              nullptr &&
-          status == 0) {
-        function = demangled_buf;
-      } else {
-        function = symbol;
+    StackTraceEntry& entry = out[collected_count];
+    entry.index = use_index ? (frame_index - first_frame) : 0;
+    entry.line = 0;
+    entry.offset = 0;
+    entry.use_index = use_index;
+
+    // Format address
+    format_address_safe(static_cast<uintptr_t>(instruction_pointer),
+                        address_buffer, sizeof(address_buffer));
+    char* address_cursor = entry.address.data();
+    write_raw(address_cursor, address_buffer, kAddressStrLength);
+
+    unw_word_t symbol_offset = 0;
+    const char* function_name = "";
+
+    int symbol_result = unw_get_proc_name(
+        &cursor, symbol_buffer, sizeof(symbol_buffer), &symbol_offset);
+    if (symbol_result == 0) {
+      function_name = demangle_symbol_safe(symbol_buffer, demangled_buffer,
+                                           sizeof(demangled_buffer));
+      entry.offset = static_cast<std::size_t>(symbol_offset);
+    } else {
+      Dl_info dl_info;
+      std::memset(&dl_info, 0, sizeof(dl_info));
+
+      if (dladdr(reinterpret_cast<const void*>(
+                     static_cast<uintptr_t>(instruction_pointer)),
+                 &dl_info)) {
+        if (dl_info.dli_sname) {
+          char* symbol_cursor = symbol_buffer;
+          write_raw(symbol_cursor, dl_info.dli_sname, kSymbolBufferSize);
+          function_name = demangle_symbol_safe(symbol_buffer, demangled_buffer,
+                                               sizeof(demangled_buffer));
+
+          if (dl_info.dli_saddr) {
+            uintptr_t symbol_base =
+                reinterpret_cast<uintptr_t>(dl_info.dli_saddr);
+            uintptr_t current_addr =
+                static_cast<uintptr_t>(instruction_pointer);
+            if (current_addr >= symbol_base) {
+              entry.offset = current_addr - symbol_base;
+            }
+          }
+        }
       }
     }
 
-    const char* file = "";
-    Dl_info info{};
-    if (dladdr(reinterpret_cast<void*>(static_cast<uintptr_t>(addr)), &info) &&
-        info.dli_fname) {
-      file = info.dli_fname;
+    char* function_cursor = entry.function.data();
+    write_raw(function_cursor, function_name, kFunctionStrLength);
+
+    const char* file_name = "";
+    Dl_info dl_info;
+    std::memset(&dl_info, 0, sizeof(dl_info));
+
+    if (dladdr(reinterpret_cast<const void*>(
+                   static_cast<uintptr_t>(instruction_pointer)),
+               &dl_info)) {
+      if (dl_info.dli_fname) {
+        file_name = dl_info.dli_fname;
+      }
     }
 
-    StackTraceEntry entry;
-    entry.index = i - first_frame;
-    std::strncpy(entry.address.data(), addr_str, kAddressStrLength - 1);
-    std::strncpy(entry.function.data(), function, kFunctionStrLength - 1);
-    std::strncpy(entry.file.data(), file, kFileStrLength - 1);
-    entry.line = 0;
-    entry.offset = offset;
-    entry.use_index = use_index;
-    out[count++] = entry;
-  }
-  return count;
+    char* file_cursor = entry.file.data();
+    write_raw(file_cursor, file_name, kFileStrLength);
+
+    ++collected_count;
+    ++frame_index;
+  } while (unw_step(&cursor) > 0);
+
+  return collected_count;
+
 #elif IS_UNIX
   void* stack[kPlatformMaxFrames];
   int frames = backtrace(stack, static_cast<int>(max_frames));
@@ -175,24 +365,19 @@ std::size_t collect_stack_trace(
 
     const char* function = frame;
     int status;
-    char mangled_buf[256];
+    char mangled_buf[kMangledBufferSize];
 
     const char* lparen = strchr(frame, '(');
     const char* plus = strchr(frame, '+');
     if (lparen && plus && plus > lparen) {
       std::size_t mangled_len = std::min(
           static_cast<std::size_t>(plus - lparen - 1), sizeof(mangled_buf) - 1);
-      std::strncpy(mangled_buf, lparen + 1, mangled_len);
+      write_raw(mangled_buf, lparen + 1, kMangledBufferSize);
       mangled_buf[mangled_len] = '\0';
 
       std::size_t demangled_len = kDemangledBufferSize;
-      if (abi::__cxa_demangle(mangled_buf, demangled_buf, &demangled_len,
-                              &status) != nullptr &&
-          status == 0) {
-        function = demangled_buf;
-      } else {
-        function = mangled_buf;
-      }
+      function = demangle_symbol_safe(mangled_buf, demangled_buf,
+                                      sizeof(demangled_buf));
     }
 
     const char* file = "";
@@ -211,9 +396,12 @@ std::size_t collect_stack_trace(
 
     StackTraceEntry entry;
     entry.index = i - first_frame;
-    std::strncpy(entry.address.data(), addr_str, kAddressStrLength - 1);
-    std::strncpy(entry.function.data(), function, kFunctionStrLength - 1);
-    std::strncpy(entry.file.data(), file, kFileStrLength - 1);
+    char* address_cursor = entry.address.data();
+    char* function_cursor = entry.function.data();
+    char* file_cursor = entry.file.data();
+    write_raw(address_cursor, addr_str, kAddressStrLength);
+    write_raw(function_cursor, function, kFunctionStrLength);
+    write_raw(file_cursor, file, kFileStrLength);
     entry.line = 0;
     entry.offset = offset;
     entry.use_index = use_index;
@@ -223,19 +411,17 @@ std::size_t collect_stack_trace(
   free(strs);
   return count;
 #elif IS_WINDOWS
-  SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME | SYMOPT_LOAD_LINES);
   HANDLE process = GetCurrentProcess();
-  if (!SymInitialize(process, nullptr, TRUE)) {
-    return 0;
-  }
 
-  void* stack[kPlatformMaxFrames];
-  WORD frames =
-      CaptureStackBackTrace(static_cast<DWORD>(first_frame),
-                            static_cast<DWORD>(max_frames), stack, nullptr);
+  void* stack[kPlatformMaxFrames * 2];
+  WORD raw_frames = CaptureStackBackTrace(
+      0, static_cast<DWORD>(first_frame + max_frames), stack, nullptr);
+  WORD frames = std::min<WORD>(raw_frames - first_frame, max_frames);
 
   constexpr int MAX_NAME_LEN = 256;
-  alignas(SYMBOL_INFO) char symbol_buffer[sizeof(SYMBOL_INFO) + MAX_NAME_LEN];
+  // alignas(SYMBOL_INFO) char symbol_buffer[sizeof(SYMBOL_INFO) +
+  // MAX_NAME_LEN];
+  char symbol_buffer[sizeof(SYMBOL_INFO) + MAX_NAME_LEN * sizeof(TCHAR)];
   SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(symbol_buffer);
   std::memset(symbol, 0, sizeof(symbol_buffer));
 
@@ -250,9 +436,14 @@ std::size_t collect_stack_trace(
   std::size_t count = 0;
 
   for (WORD i = 0; i < frames; i++) {
-    DWORD64 address = reinterpret_cast<DWORD64>(stack[i]);
+    DWORD64 address = reinterpret_cast<DWORD64>(stack[i + first_frame]);
 
-    std::snprintf(address_buf, sizeof(address_buf), "0x%016llx", address);
+    // Skip invalid addresses
+    if (!is_valid_address_win(address)) {
+      continue;
+    }
+
+    format_address_safe_win64(address, address_buf, sizeof(address_buf));
     const char* addr_str = address_buf;
 
     const char* function = "";
@@ -269,91 +460,47 @@ std::size_t collect_stack_trace(
     }
 
     StackTraceEntry entry;
-    entry.index = i - first_frame;
-    std::strncpy(entry.address.data(), addr_str, kAddressStrLength - 1);
-    std::strncpy(entry.function.data(), function, kFunctionStrLength - 1);
-    std::strncpy(entry.file.data(), file, kFileStrLength - 1);
+    entry.index = use_index ? i : 0;
+    char* address_cursor = entry.address.data();
+    char* function_cursor = entry.function.data();
+    char* file_cursor = entry.file.data();
+    write_raw(address_cursor, addr_str, kAddressStrLength);
+    write_raw(function_cursor, function, kFunctionStrLength);
+    write_raw(file_cursor, file, kFileStrLength);
     entry.line = line_number;
     entry.offset = 0;
     entry.use_index = use_index;
     out[count++] = entry;
   }
 
-  SymCleanup(process);
   return count;
 #endif
 }
 
-#if ENABLE_LLVM_UNWIND
-std::string stack_trace_with_libunwind(unw_context_t* context,
-                                       bool use_index,
-                                       std::size_t first_frame,
-                                       std::size_t max_frames) {
-  StackTraceEntry entries[kPlatformMaxFrames];
-  std::size_t count =
-      collect_stack_trace(context, entries, use_index, first_frame, max_frames);
-  std::string result;
-  result.reserve(count * 256);
-  stack_trace_entries_to_string(entries, count, &result);
-  return result;
-}
-
-void stack_trace_with_libunwind_to_buffer(char* buffer,
-                                          std::size_t buffer_size,
-                                          unw_context_t* context,
-                                          bool use_index,
-                                          std::size_t first_frame,
-                                          std::size_t max_frames) {
-  StackTraceEntry entries[kPlatformMaxFrames];
-  std::size_t count =
-      collect_stack_trace(context, entries, use_index, first_frame, max_frames);
-  stack_trace_entries_to_buffer(entries, count, buffer, buffer_size);
-}
-#endif
-
 std::string stack_trace_from_current_context(bool use_index,
                                              std::size_t first_frame,
                                              std::size_t max_frames) {
-#if ENABLE_LLVM_UNWIND
-  unw_context_t context;
-  if (unw_getcontext(&context) != 0) {
-    return "";
-  }
-  return stack_trace_with_libunwind(&context, use_index, first_frame,
-                                    max_frames);
-#else
-  StackTraceEntry entries[kPlatformMaxFrames];
-  std::size_t count =
-      collect_stack_trace(entries, use_index, first_frame, max_frames);
-  std::string result;
-  result.reserve(count * 256);
-  stack_trace_entries_to_string(entries, count, &result);
-  return result;
-#endif
+  constexpr std::size_t kBufSize = 4096;
+  char buf[kBufSize];
+  stack_trace_from_current_context(buf, kBufSize, use_index, first_frame + 1,
+                                   max_frames);
+  return std::string(std::move(buf));
 }
 
-void stack_trace_from_current_context_to_buffer(char* buffer,
-                                                std::size_t buffer_size,
-                                                bool use_index,
-                                                std::size_t first_frame,
-                                                std::size_t max_frames) {
-#if ENABLE_LLVM_UNWIND
-  unw_context_t context;
-  if (unw_getcontext(&context) != 0) {
-    const char* err_msg = "Failed to get context\n";
-    std::size_t err_len = std::strlen(err_msg);
-    std::size_t copy_len = std::min(err_len, buffer_size - 1);
-    std::strncpy(buffer, err_msg, copy_len);
-    buffer[copy_len] = '\0';
-    return;
-  }
-  stack_trace_with_libunwind_to_buffer(buffer, buffer_size, &context, use_index,
-                                       first_frame, max_frames);
-#else
+void stack_trace_from_current_context(char* buffer,
+                                      std::size_t buffer_size,
+                                      bool use_index,
+                                      std::size_t first_frame,
+                                      std::size_t max_frames) {
   StackTraceEntry entries[kPlatformMaxFrames];
   std::size_t count =
       collect_stack_trace(entries, use_index, first_frame, max_frames);
   stack_trace_entries_to_buffer(entries, count, buffer, buffer_size);
+}
+
+void register_stack_trace_handler() {
+#if IS_WINDOWS
+  static const WindowsStackTraceHancler handler;
 #endif
 }
 

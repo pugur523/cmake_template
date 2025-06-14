@@ -51,8 +51,9 @@ class CORE_EXPORT SystemInfo {
 
 CORE_EXPORT std::ostream& operator<<(std::ostream& os,
                                      const SystemInfo& sys_info);
-CORE_EXPORT std::string format_bytes(const uint64_t bytes,
-                                     const std::size_t precision = 2);
+[[nodiscard]] CORE_EXPORT std::string format_bytes(
+    const uint64_t bytes,
+    const std::size_t precision = 2);
 
 }  // namespace core
 

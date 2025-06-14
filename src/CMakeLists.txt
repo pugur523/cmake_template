@@ -21,9 +21,9 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_NAME STREQUAL "Windo
   set(MINGW_BUILD TRUE)
 endif()
 
-option(DO_CLANG_TIDY "whether do clang tidy or not" TRUE)
+option(DO_CLANG_TIDY "do clang tidy for linting" TRUE)
 
-if(DO_CLANG_TIDY)
+if(DO_CLANG_TIDY AND NOT MINGW_BUILD)
   set(CLANG_TIDY_COMMAND "clang-tidy;--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy;-p=${CMAKE_BINARY_DIR}")
 endif()
 
@@ -37,7 +37,6 @@ endif()
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} lower_build_type)
 option(BUILD_PROGRAM "build standalone executable" TRUE)
-option(BUILD_LIBS "build libraries" TRUE)
 option(INSTALL_PROGRAM "install standalone executable" TRUE)
 option(INSTALL_LIBS "install libraries" TRUE)
 option(BUILD_SHARED "build libraries as shared" TRUE)
@@ -58,10 +57,11 @@ option(ENABLE_LTO "enable link time optimization" TRUE)
 option(ENABLE_NATIVE_ARCH "enable optimization for native architecture" TRUE)
 
 option(ENABLE_BUILD_REPORT "generate the report for optimization, build time, etc." TRUE)
-option(ENABLE_COVERAGE "enable coverage using -fprofile-instr-generate and llvm-cov. runs main app and test on post build if available." FALSE)
-option(ENABLE_OPTIMIZATION_REPORT "generate optimization report" FALSE)
-option(ENABLE_XRAY "enable llvm-xray. not compatible with windows build, debug build, address sanitizers. runs main app and test on post build if available." FALSE)
+option(ENABLE_COVERAGE "enable coverage using -fprofile-instr-generate and llvm-cov. runs main app and test on post build if available." TRUE)
+option(ENABLE_OPTIMIZATION_REPORT "generate optimization report" TRUE)
+option(ENABLE_XRAY "enable llvm-xray. not compatible with windows build, debug build, address sanitizers. runs main app and test on post build if available." TRUE)
 option(ENABLE_SANITIZERS "enable address and undefined sanitizers" TRUE)
+option(ENABLE_LLVM_UNWIND "enable llvm libunwind to fetch stacktrace" TRUE)
 
 option(ENABLE_RUN_APP_POST_BUILD "enable running app post build" FALSE)
 option(ENABLE_RUN_TESTS_POST_BUILD "enable running tests post build" TRUE)
@@ -69,27 +69,57 @@ option(ENABLE_RUN_TESTS_POST_BUILD "enable running tests post build" TRUE)
 option(WARNINGS_AS_ERRORS "treat warnings as errors" TRUE)
 
 if(ENABLE_OPTIMIZATION_REPORT AND HOST_OS_NAME MATCHES "windows")
-  message(WARNING "ENABLE_OPTIMIZATION_REPORT on Windows build is not supported.")
-  message(WARNING "set ENABLE_OPTIMIZATION_REPORT to false forcely.")
+  message(WARNING "ENABLE_OPTIMIZATION_REPORT on Windows build is not supported.\n"
+    "set ENABLE_OPTIMIZATION_REPORT to false forcely.")
   set(ENABLE_OPTIMIZATION_REPORT FALSE)
 endif()
 
+if(ENABLE_COVERAGE AND MINGW_BUILD)
+  message(WARNING "ENABLE_COVERAGE for MinGW build is not supported.\n"
+    "set ENABLE_COVERAGE to false forcely.")
+  set(ENABLE_COVERAGE FALSE)
+endif()
+
 if(ENABLE_XRAY AND MINGW_BUILD)
-  message(WARNING "ENABLE_XRAY for MinGW build is not supported.")
-  message(WARNING "set ENABLE_XRAY to false forcely.")
+  message(WARNING "ENABLE_XRAY for MinGW build is not supported.\n"
+    "set ENABLE_XRAY to false forcely.")
   set(ENABLE_XRAY FALSE)
 endif()
 
 if(ENABLE_XRAY AND TARGET_OS_NAME MATCHES "windows")
-  message(WARNING "ENABLE_XRAY for Windows build is not supported.")
-  message(WARNING "set ENABLE_XRAY to false forcely.")
+  message(WARNING "ENABLE_XRAY for Windows build is not supported.\n"
+    "set ENABLE_XRAY to false forcely.")
   set(ENABLE_XRAY FALSE)
 endif()
 
+if(ENABLE_LLVM_UNWIND AND TARGET_OS_NAME MATCHES "windows")
+  message(WARNING "ENABLE_LLVM_UNWIND for Windows build is not supported.\n"
+    "set ENABLE_LLVM_UNWIND to false forcely.")
+  set(ENABLE_LLVM_UNWIND FALSE)
+endif()
+
 if(ENABLE_XRAY AND ENABLE_SANITIZERS)
-  message(WARNING "ENABLE_XRAY and ENABLE_SANITIZERS cannot be enabled at the same time.")
-  message(WARNING "set ENABLE_SANITIZERS to false forcely.")
+  message(WARNING "ENABLE_XRAY and ENABLE_SANITIZERS cannot be enabled at the same time.\n"
+    "set ENABLE_SANITIZERS to false forcely.")
   set(ENABLE_SANITIZERS FALSE)
+endif()
+
+if(ENABLE_LTO AND BUILD_DEBUG)
+  message(WARNING "ENABLE_LTO in Debug build is not recommended.\n"
+    "set ENABLE_LTO to false forcely.")
+  set(ENABLE_LTO FALSE)
+endif()
+
+if(ENABLE_XRAY AND NOT BUILD_DEBUG)
+  message(WARNING "ENABLE_XRAY in Release build is not recommended.\n"
+    "set ENABLE_XRAY to false forcely.")
+  set(ENABLE_XRAY FALSE)
+endif()
+
+if(ENABLE_COVERAGE AND NOT BUILD_DEBUG)
+  message(WARNING "ENABLE_COVERAGE in Release build is not recommended.\n"
+    "set ENABLE_COVERAGE to false forcely.")
+  set(ENABLE_COVERAGE FALSE)
 endif()
 
 set(ADDITIONAL_INCLUDE_DIRECTORIES "" CACHE STRING "additional include directories to apply whole the project")
@@ -121,7 +151,7 @@ file(REMOVE_RECURSE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 file(REMOVE_RECURSE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 file(REMOVE_RECURSE ${CMAKE_PDB_OUTPUT_DIRECTORY})
 
-set(PROJECT_INCLUDE_DIRECTORIES
+list(APPEND PROJECT_INCLUDE_DIRECTORIES
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${LLVM_INCLUDE_DIRS}
   ${TOML11_INCLUDE_DIR}
@@ -130,12 +160,12 @@ set(PROJECT_INCLUDE_DIRECTORIES
   ${ADDITIONAL_INCLUDE_DIRECTORIES}
 )
 
-set(PROJECT_LINK_DIRECTORIES
+list(APPEND PROJECT_LINK_DIRECTORIES
   ${LLVM_LIBRARY_DIRS}
   ${ADDITIONAL_LINK_DIRECTORIES}
 )
 
-set(PROJECT_LINK_LIBRARIES
+list(APPEND PROJECT_LINK_LIBRARIES
   ${MINGW_LINK_LIBRARIES}
   ${LLVM_LINK_LIBRARIES}
   ${WINDOWS_LINK_LIBRARIES}
@@ -167,7 +197,6 @@ is mingw build: ${MINGW_BUILD}
 toolchain file: ${CMAKE_TOOLCHAIN_FILE}
 build debug: ${BUILD_DEBUG}
 build program: ${BUILD_PROGRAM}
-build libs: ${BUILD_LIBS}
 install program: ${INSTALL_PROGRAM}
 install libs: ${INSTALL_LIBS}
 build shared: ${BUILD_SHARED}
@@ -181,6 +210,7 @@ enable profile: ${ENABLE_COVERAGE}
 enable optimization report: ${ENABLE_OPTIMIZATION_REPORT}
 enable xray: ${ENABLE_XRAY}
 enable sanitizers: ${ENABLE_SANITIZERS}
+enable llvm unwind: ${ENABLE_LLVM_UNWIND}
 enable run app post build: ${ENABLE_RUN_APP_POST_BUILD}
 enable run tests post build: ${ENABLE_RUN_TESTS_POST_BUILD}
 warnings as errors: ${WARNINGS_AS_ERRORS}
@@ -188,13 +218,13 @@ warnings as errors: ${WARNINGS_AS_ERRORS}
   print_all_build_flags()
 endif()
 
+add_subdirectory(build)
+
 if(BUILD_PROGRAM)
   add_subdirectory(app)
 endif()
 
-if(BUILD_LIBS)
-  add_subdirectory(core)
-endif()
+add_subdirectory(core)
 
 if(BUILD_TESTING)
   setup_gtest()

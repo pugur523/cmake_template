@@ -66,7 +66,7 @@ def select_best_toolchain(build_os, target_os):
     return os.path.join(toolchains_dir, (toolchain_name + ".cmake"))
 
 
-def build_all_options_matrix(
+def build_with_all_option_combinations(
     target_platforms,
     archs,
     build_types,
@@ -74,24 +74,24 @@ def build_all_options_matrix(
     fail_fast,
 ):
     options = {
-        "-DBUILD_CORE_SHARED": ["false", "true"],
+        "-DENABLE_LLVM_UNWIND": ["false", "true"],
         "-DENABLE_XRAY": ["false", "true"],
         "-DENABLE_SANITIZERS": ["false", "true"],
+        "-DENABLE_LTO": ["false", "true"],
+        "-DBUILD_CORE_SHARED": ["false", "true"],
     }
 
     common_args = [
-        "-DENABLE_VERBOSE=false",
         "-DBUILD_SHARED=true",
         "-DBUILD_TESTING=true",
         "-DINSTALL_TESTING=false",
         "-DENABLE_RUN_APP_POST_BUILD=false",
         "-DENABLE_RUN_TESTS_POST_BUILD=false",
         "-DWARNINGS_AS_ERRORS=true",
-        "-DENABLE_LTO=true",
         "-DENABLE_NATIVE_ARCH=true",
-        "-DENABLE_BUILD_REPORT=true",
-        "-DENABLE_COVERAGE=true",
-        "-DENABLE_OPTIMIZATION_REPORT=true",
+        "-DENABLE_BUILD_REPORT=false",
+        "-DENABLE_COVERAGE=false",
+        "-DENABLE_OPTIMIZATION_REPORT=false",
     ]
 
     common_args_str = ",".join(common_args)
@@ -99,20 +99,47 @@ def build_all_options_matrix(
     option_keys = list(options.keys())
     option_values = list(options.values())
 
-    all_combinations = product(target_platforms, archs, build_types, *option_values)
+    raw_option_combinations = list(product(*option_values))
 
-    print(
-        f"testing {len(target_platforms) * len(archs) * len(build_types) * len(list(product(*option_values)))} option combinations..."
-    )
+    def is_valid_combination(platform, build_type, opt_combo):
+        opt_dict = dict(zip(option_keys, opt_combo))
+        if (
+            opt_dict["-DENABLE_XRAY"] == "true"
+            and opt_dict["-DENABLE_SANITIZERS"] == "true"
+        ):
+            return False
+        if platform == "windows" and (
+            opt_dict["-DENABLE_XRAY"] == "true"
+            or opt_dict["-DENABLE_LLVM_UNWIND"] == "true"
+        ):
+            return False
+        if build_type == "debug" and opt_dict["-DENABLE_LTO"] == "true":
+            return False
+        if build_type == "release" and (
+            opt_dict["-DENABLE_SANITIZERS"] == "true"
+            or opt_dict["-DENABLE_XRAY"] == "true"
+        ):
+            return False
+        return True
 
-    headers = ["OS", "Arch", "BuildType"] + option_keys + ["Result"]
+    all_combinations = [
+        (platform, arch, build_type, opt_combo)
+        for platform in target_platforms
+        for arch in archs
+        for build_type in build_types
+        for opt_combo in raw_option_combinations
+        if is_valid_combination(platform, build_type, opt_combo)
+    ]
 
-    def build_single_combination(args):
-        platform, arch, build_type, *opt_values = args
-        extra_args = common_args_str
-        extra_args += ",".join(
+    headers = ["OS", "Arch", "BuildType"] + option_keys + ["TimeElapsed", "Result"]
+
+    def build_single_combination(platform, arch, build_type, opt_values):
+        variable_opts_str = ",".join(
             f"{k}={v.upper()}" for k, v in zip(option_keys, opt_values)
         )
+        extra_args = common_args_str + "," + variable_opts_str
+        print(f"starting {platform}-{arch}-{build_type}, {variable_opts_str}")
+        start_time = time()
         try:
             result = build_project(
                 target_platform=platform,
@@ -122,36 +149,47 @@ def build_all_options_matrix(
                 build_async=True,
                 install=False,
                 package=False,
+                verbose=False,
                 extra_args=extra_args,
             )
             status = "✅" if result == 0 else "❌"
         except Exception as e:
             status = f"💥 ({e})"
-        return [platform, arch, build_type] + list(opt_values) + [status]
+        total_build_sec = time() - start_time
+        minutes = int(total_build_sec // 60)
+        seconds = int(total_build_sec % 60)
+        return (
+            [platform, arch, build_type]
+            + list(opt_values)
+            + [f"{minutes}m {seconds}s", status]
+        )
 
     results = []
+    print(f"Testing {len(all_combinations)} option combinations...")
 
     start_time = time()
-    for combo in all_combinations:
-        row = build_single_combination(combo)
+    for platform, arch, build_type, opt_values in all_combinations:
+        row = build_single_combination(platform, arch, build_type, opt_values)
         results.append(row)
         if fail_fast and row[-1] != "✅":
             print(tabulate(results, headers=headers, tablefmt="grid"))
             return 1
 
-    # print(tabulate(results, headers=headers, tablefmt="grid"))
+    print("\nBuild Result: \n")
+    print(tabulate(results, headers=headers, tablefmt="grid"))
 
+    ret = 0
     failures = [r for r in results if r[-1] != "✅"]
     if failures:
         print(f"\n{len(failures)} / {len(results)} combinations failed.")
         print(tabulate(failures, headers=headers, tablefmt="grid"))
-        return 1
-    end_time = time()
-    total_sec = end_time - start_time
+        ret = 1
+
+    total_sec = time() - start_time
     minutes = int(total_sec // 60)
     seconds = int(total_sec % 60)
-    print(f"\n✅ All builds completed in {minutes} min {seconds} sec.")
-    return 0
+    print(f"\nAll builds completed in {minutes} min {seconds} sec.")
+    return ret
 
 
 def build_project(
@@ -162,6 +200,7 @@ def build_project(
     build_async: bool = True,
     install: bool = False,
     package: bool = False,
+    verbose: bool = False,
     extra_args: str = "",
 ):
     if target_platform not in supported_platforms:
@@ -192,23 +231,46 @@ def build_project(
         toolchain_file,
         "--install-prefix",
         install_dir,
-        "-D BUILD_DEBUG=" + ("TRUE" if build_type == "debug" else "FALSE"),
+        "-D BUILD_DEBUG=" + ("true" if build_type == "debug" else "false"),
         "-D TARGET_OS_NAME=" + target_platform,
         "-D TARGET_ARCH=" + target_arch,
-        "-D DO_CLANG_TIDY=" + ("TRUE" if do_clang_tidy else "FALSE"),
+        "-D DO_CLANG_TIDY=" + ("true" if do_clang_tidy else "false"),
     ]
+    if verbose:
+        os.environ["VERBOSE"] = "true"
+        args.extend(["-D ENABLE_VERBOSE=true"])
+    else:
+        os.environ.pop("VERBOSE", "")
+        args.extend(["-D ENABLE_VERBOSE=false"])
+
     if extra_args:
         extra_args_list = extra_args.split(",")
         args.extend(extra_args_list)
 
     if get_platform_name() == "windows":
         llvm_dir = os.environ.get("LLVM_DIR", "C:/Program Files/LLVM")
-        args.extend(
-            [
-                "-D LLVM_INCLUDE_DIRS=" + os.path.join(llvm_dir, "include"),
-                "-D LLVM_LIBRARY_DIRS=" + os.path.join(llvm_dir, "lib"),
-            ]
-        )
+        if os.path.exists(llvm_dir):
+            args.extend(
+                [
+                    "-D LLVM_INCLUDE_DIRS=" + os.path.join(llvm_dir, "include"),
+                    "-D LLVM_LIBRARY_DIRS=" + os.path.join(llvm_dir, "lib"),
+                ]
+            )
+    elif target_platform == "windows" and get_platform_name() == "linux":
+        llvm_mingw_dir = os.environ.get("LLVM_MINGW_DIR", "/opt/llvm-mingw*")
+        llvm_w64_mingw32_dir = os.path.join(llvm_mingw_dir, "x86_64-w64-mingw32")
+
+        if os.path.exists(llvm_w64_mingw32_dir):
+            args.extend(
+                [
+                    "-D LLVM_INCLUDE_DIRS="
+                    + os.path.join(llvm_w64_mingw32_dir, "include"),
+                    "-D LLVM_LIBRARY_DIRS=" + os.path.join(llvm_w64_mingw32_dir, "lib"),
+                ]
+            )
+            os.environ["PATH"] = (
+                f'{os.environ["PATH"]}:{os.path.join(llvm_mingw_dir, "bin")}'
+            )
 
     additional_include_dirs = os.environ.get("INCLUDE", "")
     additional_link_dirs = os.environ.get("LIB", "")
@@ -307,7 +369,7 @@ def main(argv):
     parser.add_argument(
         "--build_async",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="build all configs asynchronously",
     )
     parser.add_argument(
@@ -327,6 +389,12 @@ def main(argv):
         action=argparse.BooleanOptionalAction,
         default=False,
         help="return fast on build failure",
+    )
+    parser.add_argument(
+        "--verbose",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="verbose mode",
     )
     parser.add_argument(
         "--extra_args",
@@ -355,7 +423,7 @@ def main(argv):
     print("target build types: ", ", ".join(target_build_types))
 
     if args.build_mode == "all_options_matrix":
-        return build_all_options_matrix(
+        return build_with_all_option_combinations(
             target_platforms,
             target_archs,
             target_build_types,
@@ -392,6 +460,7 @@ def main(argv):
                 build_async=args.build_async,
                 install=args.install,
                 package=args.package,
+                verbose=args.verbose,
                 extra_args=args.extra_args,
             )
 
@@ -425,6 +494,7 @@ def main(argv):
                 build_async=args.build_async,
                 install=args.install,
                 package=args.package,
+                verbose=args.verbose,
                 extra_args=args.extra_args,
             )
             if result != 0:

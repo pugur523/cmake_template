@@ -1,11 +1,13 @@
-#include "app/prelaunch_handler.h"
+#include "app/preinit_handler.h"
 
 #include "core/diagnostics/signal_handler.h"
+#include "core/diagnostics/stack_trace.h"
 #include "core/diagnostics/terminate_handler.h"
 
 namespace app {
 
-int on_prelaunch() {
+int on_preinit() {
+  core::register_stack_trace_handler();
   core::register_terminate_handler();
   core::register_signal_handlers();
 
@@ -13,4 +15,3 @@ int on_prelaunch() {
 }
 
 }  // namespace app
-

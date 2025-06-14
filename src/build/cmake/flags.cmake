@@ -4,7 +4,7 @@ macro(setup_windows_flags)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics -fdiagnostics-color=always" PARENT_SCOPE)
 
   # Base flags - enable warnings
-  list(APPEND PROJECT_COMPILE_OPTIONS /W4 /clang:-Wall /clang:-Wextra /clang:-Wpedantic /clang:-fno-exceptions)
+  list(APPEND PROJECT_COMPILE_OPTIONS /W4 /clang:-Wall /clang:-Wextra /clang:-Wpedantic)
 
   if(WARNINGS_AS_ERRORS)
     list(APPEND PROJECT_COMPILE_OPTIONS /WX /clang:-Werror)
@@ -17,8 +17,8 @@ macro(setup_windows_flags)
   set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /DEBUG")
 
   # Release configuration
-  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /DNDEBUG /Gw /Gy /Zc:dllexportInlines-")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /DNDEBUG /Gw /Gy /Zc:dllexportInlines-")
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /DNDEBUG /Gw /Gy /Zc:dllexportInlines- /clang:-fno-exceptions")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /DNDEBUG /Gw /Gy /Zc:dllexportInlines- /clang:-fno-exceptions")
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /permissive- /Zc:__cplusplus /Zc:inline /Zc:strictStrings /Zc:alignedNew /Zc:sizedDealloc /Zc:threadSafeInit")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /permissive- /Zc:__cplusplus /Zc:inline /Zc:strictStrings /Zc:alignedNew /Zc:sizedDealloc /Zc:threadSafeInit")
@@ -42,8 +42,6 @@ macro(setup_windows_flags)
   if(ENABLE_BUILD_REPORT)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /clang:-ftime-trace")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /clang:-ftime-trace")
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /clang:-Rpass=src/ /clang:-Rpass-missed=src/")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /clang:-Rpass=src/ /clang:-Rpass-missed=src/")
   endif()
 
   if(ENABLE_OPTIMIZATION_REPORT)
@@ -55,64 +53,50 @@ endmacro()
 
 macro(setup_unix_flags)
   # Enable color and use libc++
-  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=always")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -stdlib=libc++")
 
   # Base flags - enable warnings
-  list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -fno-common -fno-exceptions)
+  list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -fno-common)
 
   if(WARNINGS_AS_ERRORS)
     list(APPEND PROJECT_COMPILE_OPTIONS -Werror)
   endif()
 
   # Debug configuration
-  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fmacro-backtrace-limit=0 -frtti")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -fmacro-backtrace-limit=0 -frtti")
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fno-inline -fmacro-backtrace-limit=0 -frtti -fno-omit-frame-pointer -funwind-tables")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -fno-inline -fmacro-backtrace-limit=0 -frtti -fno-omit-frame-pointer -funwind-tables")
 
   # Release configuration
-  set(CMAKE_C_FLAGS_RELEASE
-    "${CMAKE_C_FLAGS_RELEASE} \
-      -O3 \
-      -ffunction-sections \
-      -fdata-sections \
-      -fstack-protector-strong \
-      -D_FORTIFY_SOURCE=2 \
-      -ftrivial-auto-var-init=zero \
-      -fomit-frame-pointer \
-      -fno-rtti"
-  )
-  set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} \
-      -O3 \
-      -ffunction-sections \
-      -fdata-sections \
-      -fstack-protector-strong \
-      -D_FORTIFY_SOURCE=2 \
-      -ftrivial-auto-var-init=zero \
-      -fomit-frame-pointer \
-      -fno-rtti"
-  )
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -ffunction-sections -fdata-sections -fstack-protector-strong -D_FORTIFY_SOURCE=2 -ftrivial-auto-var-init=zero -fno-rtti -fomit-frame-pointer -fno-exceptions")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffunction-sections -fdata-sections -fstack-protector-strong -D_FORTIFY_SOURCE=2 -ftrivial-auto-var-init=zero -fno-rtti -fomit-frame-pointer -fno-exceptions")
 
   # Avoid mingw
   if(NOT MINGW_BUILD)
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fstack-clash-protection")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fstack-clash-protection")
     set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -rdynamic")
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -rdynamic")
+
+    if(NOT TARGET_OS_NAME MATCHES "darwin")
+      set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fstack-clash-protection")
+      set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fstack-clash-protection")
+    endif()
   endif()
 
-  # Hide symbols by default
-  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-  set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+  # Hide symbols by default, this will break stack trace.
+  # set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+  # set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
   # Link time optimization
   if(ENABLE_LTO)
     if(NOT MINGW_BUILD)
       set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-      set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -flto=thin")
-      set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=thin")
-      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto=thin")
-      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -flto=thin")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flto=thin -funified-lto")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=thin -funified-lto")
+
+      if(NOT TARGET_OS_NAME MATCHES "darwin")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--lto=thin -funified-lto")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--lto=thin -funified-lto")
+      endif()
     endif()
 
     if(TARGET_OS_NAME MATCHES "darwin")
@@ -144,7 +128,7 @@ macro(setup_unix_flags)
 
   # Sanitize configuration
   if(ENABLE_SANITIZERS AND BUILD_DEBUG AND NOT MINGW_BUILD)
-    set(SAN_FLAGS "-fsanitize=address,undefined -fno-omit-frame-pointer")
+    set(SAN_FLAGS "-fsanitize=address,undefined")
 
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${SAN_FLAGS}")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${SAN_FLAGS}")
@@ -178,10 +162,13 @@ macro(setup_common_flags)
 
   # Profiling with llvm-xray
   if(ENABLE_XRAY)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fxray-instrument -fxray-instrumentation-bundle=function -fxray-instruction-threshold=1")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fxray-instrument -fxray-instrumentation-bundle=function -fxray-instruction-threshold=1")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fxray-instrument -fxray-link-deps")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fxray-shared")
+    list(APPEND PROJECT_COMPILE_OPTIONS -fxray-instrument -fxray-instrumentation-bundle=function -fxray-instruction-threshold=1)
+    list(APPEND PROJECT_LINK_OPTIONS -fxray-instrument -fxray-instrumentation-bundle=function -fxray-instruction-threshold=1)
+
+    if(NOT TARGET_OS_NAME MATCHES "darwin")
+      list(APPEND PROJECT_COMPILE_OPTIONS -fxray-shared)
+      list(APPEND PROJECT_LINK_OPTIONS -fxray-shared)
+    endif()
 
     add_compile_definitions(ENABLE_XRAY=1)
   else()

@@ -4,6 +4,9 @@
 __pycache__
 *.log
 *.profraw
+*.xz
+*.gz
+*.zip
 
 # Prerequisites
 *.d

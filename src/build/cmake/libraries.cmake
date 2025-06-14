@@ -1,6 +1,3 @@
-cmake_policy(SET CMP0177 NEW)
-include(FetchContent)
-
 function(setup_zlib)
 endfunction()
 
@@ -17,7 +14,7 @@ macro(setup_gtest)
   set(BUILD_GMOCK TRUE)
 
   # For Windows: Prevent overriding the parent project's compiler/linker settings
-  set(gtest_force_shared_crt TRUE)
+  set(gtest_force_shared_crt TRUE CACHE BOOL "" FORCE)
 
   add_subdirectory(${GTEST_ROOT_DIR})
 
@@ -48,24 +45,23 @@ macro(setup_llvm)
     execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --version
       OUTPUT_VARIABLE LLVM_VERSION
       OUTPUT_STRIP_TRAILING_WHITESPACE)
+  endif()
 
-    message(STATUS "Found LLVM ${LLVM_VERSION} using ${LLVM_CONFIG_EXECUTABLE}")
-
-    list(APPEND PROJECT_LINK_OPTIONS -unwindlib=libunwind -rtlib=compiler-rt)
-
+  if(ENABLE_LLVM_UNWIND)
     add_compile_definitions(ENABLE_LLVM_UNWIND=1)
   else()
     add_compile_definitions(ENABLE_LLVM_UNWIND=0)
   endif()
 
-  if(MINGW_BUILD)
-    list(APPEND PROJECT_LINK_OPTIONS -Wl,-Bstatic -lc++ -lc++abi -lunwind -Wl,-Bdynamic)
-  elseif(NOT TARGET_OS_NAME MATCHES "windows")
-    list(APPEND LLVM_LINK_LIBRARIES c++ c++abi unwind)
+  if(NOT APPLE)
+    if(ENABLE_LLVM_UNWIND)
+      list(APPEND PROJECT_LINK_OPTIONS -unwindlib=libunwind -rtlib=compiler-rt)
+    endif()
   endif()
 
-  message(STATUS "LLVM include dirs: ${LLVM_INCLUDE_DIRS}")
-  message(STATUS "LLVM library dirs: ${LLVM_LIBRARY_DIRS}")
+  if(MINGW_BUILD)
+    list(APPEND PROJECT_LINK_OPTIONS -Wl,-Bstatic -lc++ -lc++abi -lunwind -Wl,-Bdynamic)
+  endif()
 endmacro()
 
 macro(setup_toml11)
@@ -89,11 +85,14 @@ macro(setup_zlib)
   set(ZLIB_BUILD_TESTING FALSE)
   set(ZLIB_BUILD_STATIC TRUE)
   set(ZLIB_BUILD_SHARED FALSE)
+  set(ZLIB_BUILD_MINIZIP FALSE)
   set(ZLIB_INSTALL FALSE)
 
   set(ZLIB_LIBRARIES zlibstatic)
 
   add_subdirectory(${ZLIB_DIR})
+
+  target_compile_options(${ZLIB_LIBRARIES} PRIVATE "-Wno-implicit-function-declaration")
 
   set_target_properties(${ZLIB_LIBRARIES}
     PROPERTIES

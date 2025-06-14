@@ -12,12 +12,16 @@
 #include <ntstatus.h>
 #include <windows.h>
 #elif IS_UNIX
-#include <sys/sysinfo.h>
 #include <sys/utsname.h>
-#if IS_MAC
+#if IS_LINUX
+#include <sys/sysinfo.h>
+#elif IS_MAC
+#include <mach/mach.h>
+#include <mach/mach_host.h>
 #include <sys/sysctl.h>
 #include <sys/types.h>
-#endif  // IS_MAC
+#include <unistd.h>
+#endif  // IS_LINUX
 #endif  // IS_WINDOWS
 
 namespace core {
@@ -176,16 +180,7 @@ uint64_t SystemInfo::ram_usage_raw() const {
   }
   return static_cast<uint64_t>(memory_status.ullTotalPhys -
                                memory_status.ullAvailPhys);
-#elif defined(__APPLE__) && defined(__MACH__)
-  int64_t used = 0;
-  int64_t free;
-  if (sysctlbyname("vm.page_free_count", &free, &sizeof(free), nullptr, 0) !=
-      0) {
-    std::cerr << "Couldn't get free ram amount" << std::endl;
-    return 0;
-  }
-  return static_cast<uint64_t>(total_ - free);
-#elif IS_UNIX
+#elif IS_LINUX
   struct sysinfo mem_info;
   uint64_t used = 0;
   if (sysinfo(&mem_info) == 0) {
@@ -193,6 +188,23 @@ uint64_t SystemInfo::ram_usage_raw() const {
   } else {
     std::cerr << "Couldn't get ram usage" << std::endl;
   }
+  return used;
+#elif IS_MAC
+  mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
+  vm_statistics64_data_t vm_stat;
+  kern_return_t kr =
+      host_statistics64(mach_host_self(), HOST_VM_INFO64,
+                        reinterpret_cast<host_info64_t>(&vm_stat), &count);
+  if (kr != KERN_SUCCESS) {
+    std::cerr << "Couldn't get RAM usage from host_statistics64" << std::endl;
+    return 0;
+  }
+
+  uint64_t used =
+      static_cast<uint64_t>(vm_stat.active_count + vm_stat.inactive_count +
+                            vm_stat.wire_count) *
+      sysconf(_SC_PAGESIZE);
+
   return used;
 #endif  // IS_WINDOWS
 }

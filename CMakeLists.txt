@@ -14,9 +14,12 @@ endif()
 
 string(REPLACE "\n" ";" PROJECT_CONFIG_LIST "${PROJECT_CONFIG_OUTPUT}")
 
-list(LENGTH PROJECT_CONFIG_LIST _len)
-if(NOT _len EQUAL 9)
-  message(FATAL_ERROR "Expected 9 fields from project config, got ${_len}")
+list(LENGTH PROJECT_CONFIG_LIST REAL_LENGTH)
+
+set(LIST_LEN 9)
+
+if(NOT REAL_LENGTH EQUAL ${LIST_LEN})
+  message(FATAL_ERROR "Expected ${LIST_LEN} fields from project config, got ${REAL_LENGTH}")
 endif()
 
 list(GET PROJECT_CONFIG_LIST 0 PROJECT_NAME_FROM_CONFIG)

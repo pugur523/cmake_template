@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 
@@ -19,6 +19,8 @@ import functools
 from multiprocessing import Lock
 import os, os.path
 import subprocess
+import sys
+from yaml import YAMLError
 
 try:
     # The previously builtin function `intern()` was moved
@@ -220,7 +222,7 @@ class Remark(yaml.YAMLObject):
     def message(self):
         # Args is a list of mappings (dictionaries)
         values = [self.getArgString(mapping) for mapping in self.Args]
-        return "".join(values)
+        return "".join(v if v is not None else "" for v in values)
 
     @property
     def RelativeHotness(self):
@@ -293,31 +295,38 @@ def get_remarks(input_file, filter_=None):
     all_remarks = dict()
     file_remarks = defaultdict(functools.partial(defaultdict, list))
 
-    with io.open(input_file, encoding="utf-8") as f:
-        docs = yaml.load_all(f, Loader=Loader)
+    try:
+        with io.open(input_file, encoding="utf-8") as f:
+            docs = yaml.load_all(f, Loader=Loader)
 
-        filter_e = None
-        if filter_:
-            filter_e = re.compile(filter_)
-        for remark in docs:
-            remark.canonicalize()
-            # Avoid remarks withoug debug location or if they are duplicated
-            if not hasattr(remark, "DebugLoc") or remark.key in all_remarks:
-                continue
+            filter_e = None
+            if filter_:
+                filter_e = re.compile(filter_)
+            for remark in docs:
+                remark.canonicalize()
+                # Avoid remarks withoug debug location or if they are duplicated
+                if not hasattr(remark, "DebugLoc") or remark.key in all_remarks:
+                    continue
 
-            if filter_e and not filter_e.search(remark.Pass):
-                continue
+                if filter_e and not filter_e.search(remark.Pass):
+                    continue
 
-            all_remarks[remark.key] = remark
+                all_remarks[remark.key] = remark
 
-            file_remarks[remark.File][remark.Line].append(remark)
+                file_remarks[remark.File][remark.Line].append(remark)
 
-            # If we're reading a back a diff yaml file, max_hotness is already
-            # captured which may actually be less than the max hotness found
-            # in the file.
-            if hasattr(remark, "max_hotness"):
-                max_hotness = remark.max_hotness
-            max_hotness = max(max_hotness, remark.Hotness)
+                # If we're reading a back a diff yaml file, max_hotness is already
+                # captured which may actually be less than the max hotness found
+                # in the file.
+                if hasattr(remark, "max_hotness"):
+                    max_hotness = remark.max_hotness
+                max_hotness = max(max_hotness, remark.Hotness)
+    except YAMLError as e:
+        print(f"Failed to parse YAML: {input_file}: {e}", file=sys.stderr)
+        return 0, {}, defaultdict(functools.partial(defaultdict, list))
+    except Exception as e:
+        print(f"Unexpected error while processing {input_file}: {e}", file=sys.stderr)
+        return 0, {}, defaultdict(functools.partial(defaultdict, list))
 
     return max_hotness, all_remarks, file_remarks
 

@@ -1,15 +1,14 @@
 <h1 align=center>
-  <img src="src/build/resources/assets/logo_1080.png" width=256 alt="CMake Template">
+  <img src="src/build/resources/assets/logo_1080.png" width=192 alt="CMake Template">
   <br/>
-  <a href="https://github.com/pugur523/cmake_template">
-    CMake Template
-  </a>
+  CMake Template
 </h1>
 
 [![Build](https://github.com/pugur523/cmake_template/actions/workflows/build.yml/badge.svg)](https://github.com/pugur523/cmake_template/actions/workflows/build.yml)
+[![Issues](https://img.shields.io/github/issues/pugur523/cmake_template.svg)](https://github.com/pugur523/cmake_template/issues)
 [![License](https://img.shields.io/badge/License-Apache%20License%20Version%202.0-red)](LICENSE)
-[![C](https://img.shields.io/badge/C-17-blue?logo=c)](https://www.c-language.org/)
-[![C++](https://img.shields.io/badge/C++-17-blue?logo=cplusplus)](https://isocpp.org/)
+[![C](https://img.shields.io/badge/C-blue?logo=c)](https://www.c-language.org/)
+[![C++](https://img.shields.io/badge/C++-blue?logo=cplusplus)](https://isocpp.org/)
 [![LLVM](https://img.shields.io/badge/LLVM-21-orange?logo=llvm)](https://llvm.org/docs/index.html)
 [![CMake](https://img.shields.io/badge/CMake-4.0.2+-green?logo=cmake)](https://cmake.org/)
 <br/>
@@ -36,6 +35,7 @@ LLVM系統のツールを活用し、軽量で高度に最適化されたC/C++�
   - [モジュール追加方法](#モジュール追加方法)
   - [ビルド引数のカスタマイズ](#ビルド引数のカスタマイズ)
   - [パフォーマンスプロファイリング](#パフォーマンスプロファイリング)
+- [ビルド成果物の配布](#ビルド成果物の配布)
 
 ## このテンプレートの特長
 
@@ -57,7 +57,7 @@ LLVM系統のツールを活用し、軽量で高度に最適化されたC/C++�
 |              [**zlib**](https://zlib.net/)              | ログファイルなどの圧縮/解凍に最適       |
 |    [**toml11**](https://github.com/ToruNiina/toml11)    | configなどに最適なTOMLパーサー/リーダー |
 
-これらのライブラリが必要ない場合には[How to Manage Libraries](#how-to-manage-libraries)を参照のもと、プロジェクトから削除してください。<br/>
+これらのライブラリが必要ない場合には[外部ライブラリ管理](#外部ライブラリ管理)を参照のもと、プロジェクトから削除してください。<br/>
 
 
 </details>
@@ -342,15 +342,15 @@ build targetは`//out/build/<platform>/<arch>/debug`、install targetは`//out/i
 
 ```toml
 [project]
-name="CMakeTemplate"
-main_executable_name="cmake_template"
-version="1.2.3"
-description="a all-in-one cmake template"
-homepage="https://github.com/pugur523/cmake_template"
-c_version="17"
-cxx_version="17"
-author="pugur"
-author_email="pugurmc@gmail.com"
+name = "CMakeTemplate"
+main_executable_name = "cmake_template"
+version = "1.2.3"
+description = "a all-in-one cmake template"
+homepage = "https://github.com/pugur523/cmake_template"
+c_version = "17"
+cxx_version = "17"
+author = "pugur"
+author_email = "pugurmc@gmail.com"
 ```
 
 </details>
@@ -424,7 +424,7 @@ $ python3 ./src/build/scripts/build.py \
 
 <details open>
   <summary>
-    Linux上のdebug/release両方のビルドタイプで、ビルドと同時に色々な最適化関連の情報を得る
+    Linux上のdebugビルドで、ビルドと同時に色々な最適化関連の情報を得る
   </summary>
 
 ```shell
@@ -455,7 +455,6 @@ $ python3 ./src/build/scripts/build.py \
 
 ```shell
 $ python3 ./src/build/scripts/build.py \
-    --build_mode=debug \
     --extra_args="-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTS_POST_BUILD=true"
 ```
 
@@ -463,10 +462,18 @@ $ python3 ./src/build/scripts/build.py \
 
 ### パフォーマンスプロファイリング
 
-[Customize Build Arguments](#customize-build-arguments)セクションにして例示したように、適切にビルド時の引数指定を行うと`//out/build/<platform>/<arch>/<build_type>`の中にそれぞれ
+[ビルド引数のカスタマイズ](#ビルド引数のカスタマイズ)セクションにして例示したように、適切にビルド時の引数指定を行うと`//out/build/<platform>/<arch>/<build_type>`の中にそれぞれ
 
 * `coverage/<project_name>/html/index.html`
 * `opt_report/index.html`
 * `xray/<project_name>/xray_trace.<project_name>.json`
 
 が生成されます。`index.html`はブラウザなどでそのファイルを開くことでUIつきで閲覧することができ、`xray_trace.<project_name>.json`は、Chromiumベースのブラウザで[about:tracing](chrome://tracing/)から開くことができます。細かい仕様についてはLLVMが公開しているllvm-cov、llvm-opt-viewer、llvm-xrayのドキュメントや、Chromiumが公開している[trace event profiling toolのドキュメント](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/)を確認してください。
+
+## ビルド成果物の配布
+
+ビルドが成功すると、その成果物は`//out/install/<platform>/<arch>/<build_type>`ディレクトリに配置されます。
+また、これらをパッケージ化したインストーラーは`//outかbuild/<platform>/<arch>/<build_type>/package`ディレクトリ内に生成されます。
+
+配布したい場合は、後者のディレクトリにある`.exe`, `.zip`, `.tar.gz`, `.deb`, `.dmg`などの拡張子のインストーラーファイルをリリースしてください。
+ユーザーは自らの環境に適したインストーラーをダウンロードし、各形式に応じた一般的な方法でこれらに含まれるビルド成果物をインストールすることができます。

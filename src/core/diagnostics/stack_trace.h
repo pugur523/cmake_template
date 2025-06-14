@@ -5,10 +5,6 @@
 
 #include "core/base/core_export.h"
 
-#if ENABLE_LLVM_UNWIND
-struct unw_context_t;
-#endif
-
 namespace core {
 
 struct StackTraceEntry;
@@ -25,54 +21,31 @@ static constexpr std::size_t kPlatformMaxFrames = 64;
 static constexpr std::size_t kPlatformMaxFrames = 64;
 #endif
 
-CORE_EXPORT void stack_trace_entries_to_string(
-    const StackTraceEntry entries[kPlatformMaxFrames],
-    std::size_t count,
-    std::string* out);
-
-CORE_EXPORT std::size_t collect_stack_trace(
-#if ENABLE_LLVM_UNWIND
-    unw_context_t* context,
-#endif
-    StackTraceEntry out[kPlatformMaxFrames],
-    bool use_index,
-    std::size_t first_frame,
-    std::size_t max_frames);
+constexpr const std::size_t kLineBufferSize = 1024;
+constexpr const std::size_t kSymbolBufferSize = 512;
+constexpr const std::size_t kDemangledBufferSize = 512;
+constexpr const std::size_t kMangledBufferSize = 256;
 
 // Example stack trace output:
 //
-// @0     0x123456789abc   bar        at /path/to/source/file:42
-// @1     0x23456789abcd   foo        at /path/to/source/file:57
-// @2     0x3456789abcde   hoge       at /path/to/source/file:91
-// @3     0x456789abcdef   fuga       at /path/to/source/file:108
+// @0     0x123456789abc   bar()        at /path/to/file
+// @1     0x23456789abcd   foo()        at /path/to/file
+// @2     0x3456789abcde   hoge()       at /path/to/file
+// @3     0x456789abcdef   fuga()       at /path/to/file
 
-#if ENABLE_LLVM_UNWIND
-CORE_EXPORT std::string stack_trace_with_libunwind(
-    unw_context_t* context,
+[[nodiscard]] CORE_EXPORT std::string stack_trace_from_current_context(
     bool use_index = true,
     std::size_t first_frame = kDefaultFirstFrame,
     std::size_t max_frames = kPlatformMaxFrames);
 
-CORE_EXPORT void stack_trace_with_libunwind_to_buffer(
-    char* buffer,
-    std::size_t buffer_size,
-    unw_context_t* context,
-    bool use_index = true,
-    std::size_t first_frame = kDefaultFirstFrame,
-    std::size_t max_frames = kPlatformMaxFrames);
-#endif
-
-CORE_EXPORT std::string stack_trace_from_current_context(
-    bool use_index = true,
-    std::size_t first_frame = kDefaultFirstFrame,
-    std::size_t max_frames = kPlatformMaxFrames);
-
-CORE_EXPORT void stack_trace_from_current_context_to_buffer(
+CORE_EXPORT void stack_trace_from_current_context(
     char* buffer,
     std::size_t buffer_size,
     bool use_index = true,
     std::size_t first_frame = kDefaultFirstFrame,
     std::size_t max_frames = kPlatformMaxFrames);
+
+CORE_EXPORT void register_stack_trace_handler();
 
 }  // namespace core
 

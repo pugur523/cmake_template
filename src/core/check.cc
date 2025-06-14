@@ -10,15 +10,15 @@ CheckFailureStream::CheckFailureStream(const char* type,
                                        const char* condition)
     : type_(type), file_(file), line_(line), condition_(condition) {}
 
-const std::ostream& CheckFailureStream::stream() {
-  return std::cerr << type_ << " failed: \"" << condition_ << "\" at " << file_
-                   << "#" << line_ << "\n";
+std::ostream& CheckFailureStream::stream() {
+  return std::cout << type_ << " failed: \"" << condition_ << "\" at " << file_
+                   << ":" << line_ << "\n";
 }
 
 CheckFailureStream::~CheckFailureStream() {
-  std::cerr << std::flush;
+  std::cout << std::flush;
 
-  std::exit(-1);
+  std::terminate();
 }
 
 }  // namespace core

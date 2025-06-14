@@ -204,6 +204,17 @@ std::string remove_bracket(const std::string& input) {
   return output;
 }
 
+std::size_t safe_strlen(const char* str) {
+  if (!str) {
+    return 0;
+  }
+  std::size_t len = 0;
+  while (str[len] != '\0') {
+    ++len;
+  }
+  return len;
+}
+
 void padding(char*& cursor,
              const char* const end,
              std::size_t current_len,
@@ -213,6 +224,15 @@ void padding(char*& cursor,
       std::min(pad_len, static_cast<std::size_t>(end - cursor));
   std::memset(cursor, ' ', to_pad);
   cursor += to_pad;
+}
+
+std::size_t write_raw(char*& dest, const char* source, std::size_t len) {
+  if (len == 0) {
+    return 0;
+  }
+
+  std::memcpy(dest, source, len);
+  return len;
 }
 
 }  // namespace core
