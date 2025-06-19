@@ -473,7 +473,7 @@ $ python3 ./src/build/scripts/build.py \
 ## ビルド成果物の配布
 
 ビルドが成功すると、その成果物は`//out/install/<platform>/<arch>/<build_type>`ディレクトリに配置されます。
-また、これらをパッケージ化したインストーラーは`//outかbuild/<platform>/<arch>/<build_type>/package`ディレクトリ内に生成されます。
+また、これらをパッケージ化したインストーラーは`//out/build/<platform>/<arch>/<build_type>/package`ディレクトリ内に生成されます。
 
 配布したい場合は、後者のディレクトリにある`.exe`, `.zip`, `.tar.gz`, `.deb`, `.dmg`などの拡張子のインストーラーファイルをリリースしてください。
 ユーザーは自らの環境に適したインストーラーをダウンロードし、各形式に応じた一般的な方法でこれらに含まれるビルド成果物をインストールすることができます。
