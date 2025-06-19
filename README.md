@@ -466,7 +466,7 @@ You can view `index.html` in your browser with a UI, and open `xray_trace.<proje
 
 ## Distributing Build Artifacts
 The build artifacts are placed in the `//out/install/<platform>/<arch>/<build_type>` directory.
-Additionally, installers packaged from these artifacts are generated in the `//out/build/<platform>/<arch>/<build_type>/package directory`.
+Additionally, installers packaged from these artifacts are generated in the `//out/build/<platform>/<arch>/<build_type>/package` directory.
 
 To distribute your application, release the installer files such as `.exe`, `.zip`, `.tar.gz`, `.deb`, or `.dmg` found in the latter directory.
 Users can download the installer appropriate for their environment and install the build artifacts using the standard method for each format.
