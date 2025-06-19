@@ -45,6 +45,7 @@
   WarningsAsErrors: '*'
   ExtraArgsBefore:
     - '-Wno-unused-command-line-argument'
+  UseColor:         true
   CheckOptions:
     - key:          bugprone-assert-side-effect.AssertMacros
       value:        assert,DCHECK

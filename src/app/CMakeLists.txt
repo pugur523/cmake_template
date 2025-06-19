@@ -70,7 +70,7 @@ if(ENABLE_COVERAGE AND ENABLE_RUN_APP_POST_BUILD)
     -format=html
     -output-dir=${COVERAGE_DIR}/html
 
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
   )
 endif()
 
@@ -94,10 +94,10 @@ endif()
 if(ENABLE_OPTIMIZATION_REPORT)
   add_custom_command(TARGET ${MAIN_EXECUTABLE_NAME} POST_BUILD
     COMMENT "Run opt-viewer to generate optimization report"
-    COMMAND ${CMAKE_SOURCE_DIR}/src/build/scripts/opt_viewer/opt-viewer.py ${CMAKE_BINARY_DIR} -s ${CMAKE_CURRENT_BINARY_DIR} -o ${CMAKE_BINARY_DIR}/opt_report
-    COMMAND ${CMAKE_SOURCE_DIR}/src/build/scripts/opt_viewer/opt-stats.py ${CMAKE_BINARY_DIR}
+    COMMAND ${PROJECT_SOURCE_DIR}/build/scripts/opt_viewer/opt-viewer.py ${CMAKE_BINARY_DIR} -s ${CMAKE_CURRENT_BINARY_DIR} -o ${CMAKE_BINARY_DIR}/opt_report
+    COMMAND ${PROJECT_SOURCE_DIR}/build/scripts/opt_viewer/opt-stats.py ${CMAKE_BINARY_DIR}
 
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
   )
 endif()
 
@@ -109,7 +109,7 @@ add_custom_command(TARGET ${MAIN_EXECUTABLE_NAME} POST_BUILD
   "${COMPILE_COMMANDS_FILE}"
   "${COMPILE_COMMANDS_OUTPUT_DIR}/compile_commands.json"
 
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
 )
 
 if(INSTALL_PROGRAM)

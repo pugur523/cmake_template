@@ -338,77 +338,62 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
 #elif IS_UNIX
   void* stack[kPlatformMaxFrames];
   int frames = backtrace(stack, static_cast<int>(max_frames));
-  char** strs = backtrace_symbols(stack, frames);
-  if (!strs) {
-    return 0;
-  }
-
   char address_buf[kAddressStrLength];
   char demangled_buf[kDemangledBufferSize];
+  char symbol_buf[kSymbolBufferSize];
   std::size_t count = 0;
 
   for (std::size_t i = first_frame; i < static_cast<std::size_t>(frames); i++) {
-    const char* frame = strs[i];
-    if (!frame) {
+    uintptr_t current_address = reinterpret_cast<uintptr_t>(stack[i]);
+
+    if (!is_valid_address_unix(current_address)) {
       continue;
     }
 
-    const char* addr_begin = strchr(frame, '[');
-    const char* addr_end = strchr(frame, ']');
-    const char* addr_str = "";
-    if (addr_begin && addr_end && addr_end > addr_begin) {
-      std::snprintf(address_buf, sizeof(address_buf), "%.*s",
-                    static_cast<int>(addr_end - addr_begin - 1),
-                    addr_begin + 1);
-      addr_str = address_buf;
-    }
+    StackTraceEntry& entry = out[count];
+    entry.index = use_index ? (i - first_frame) : 0;
+    entry.line = 0;
+    entry.use_index = use_index;
 
-    const char* function = frame;
-    int status;
-    char mangled_buf[kMangledBufferSize];
+    format_address_safe(current_address, address_buf, sizeof(address_buf));
+    char* address_cursor = entry.address.data();
+    write_raw(address_cursor, address_buf, kAddressStrLength);
 
-    const char* lparen = strchr(frame, '(');
-    const char* plus = strchr(frame, '+');
-    if (lparen && plus && plus > lparen) {
-      std::size_t mangled_len = std::min(
-          static_cast<std::size_t>(plus - lparen - 1), sizeof(mangled_buf) - 1);
-      write_raw(mangled_buf, lparen + 1, kMangledBufferSize);
-      mangled_buf[mangled_len] = '\0';
-
-      std::size_t demangled_len = kDemangledBufferSize;
-      function = demangle_symbol_safe(mangled_buf, demangled_buf,
-                                      sizeof(demangled_buf));
-    }
-
-    const char* file = "";
+    const char* function_name = "";
+    const char* file_name = "";
     std::size_t offset = 0;
-    Dl_info info{};
-    if (dladdr(stack[i], &info)) {
+
+    Dl_info info;
+    std::memset(&info, 0, sizeof(info));
+
+    if (dladdr(reinterpret_cast<const void*>(current_address), &info)) {
+      if (info.dli_sname) {
+        char* symbol_cursor = symbol_buf;
+        write_raw(symbol_cursor, info.dli_sname, kSymbolBufferSize);
+        function_name = demangle_symbol_safe(symbol_buf, demangled_buf,
+                                             kDemangledBufferSize);
+      }
       if (info.dli_fname) {
-        file = info.dli_fname;
+        file_name = info.dli_fname;
       }
       if (info.dli_saddr) {
-        std::uintptr_t base = reinterpret_cast<std::uintptr_t>(info.dli_saddr);
-        std::uintptr_t addr = reinterpret_cast<std::uintptr_t>(stack[i]);
-        offset = addr - base;
+        std::uintptr_t symbol_base =
+            reinterpret_cast<std::uintptr_t>(info.dli_saddr);
+        if (current_address >= symbol_base) {
+          offset = current_address - symbol_base;
+        }
       }
     }
+    entry.offset = offset;
 
-    StackTraceEntry entry;
-    entry.index = i - first_frame;
-    char* address_cursor = entry.address.data();
     char* function_cursor = entry.function.data();
     char* file_cursor = entry.file.data();
-    write_raw(address_cursor, addr_str, kAddressStrLength);
-    write_raw(function_cursor, function, kFunctionStrLength);
-    write_raw(file_cursor, file, kFileStrLength);
-    entry.line = 0;
-    entry.offset = offset;
-    entry.use_index = use_index;
-    out[count++] = entry;
+    write_raw(function_cursor, function_name, kFunctionStrLength);
+    write_raw(file_cursor, file_name, kFileStrLength);
+
+    count++;
   }
 
-  free(strs);
   return count;
 #elif IS_WINDOWS
   HANDLE process = GetCurrentProcess();
