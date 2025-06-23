@@ -23,7 +23,11 @@ constexpr const std::size_t kPredictedFilesNbPerDir = 64;
 [[nodiscard]] CORE_EXPORT std::vector<std::string> list_files(
     const std::string& path);
 CORE_EXPORT int create_directory(const char* path);
-CORE_EXPORT void create_directories(const std::string& path);
+CORE_EXPORT int create_directories(const std::string& path);
+CORE_EXPORT int remove_file(const char* path);
+CORE_EXPORT int remove_directory(const char* path);
+CORE_EXPORT int rename_file(const char* old_path, const char* new_path);
+
 CORE_EXPORT int write_binary_to_file(const void* binary_data,
                                      std::size_t binary_size,
                                      const std::string& output_path);

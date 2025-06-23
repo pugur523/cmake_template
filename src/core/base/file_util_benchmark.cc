@@ -1,12 +1,9 @@
-#include <filesystem>
 #include <fstream>
 #include <string>
 #include <vector>
 
 #include "benchmark/benchmark.h"
 #include "core/base/file_util.h"
-
-namespace fs = std::filesystem;
 
 namespace {
 
@@ -20,15 +17,15 @@ void with_temp_file(const std::string& content, const F& fn) {
 
   fn(tmp_path);
 
-  std::remove(tmp_path.c_str());
+  core::remove_file(tmp_path.c_str());
 }
 
 template <typename F>
 void with_temp_dir(const F& fn) {
   const std::string tmp_dir = "./tmp_test_dir";
-  fs::create_directory(tmp_dir);
+  core::create_directory(tmp_dir.c_str());
   fn(tmp_dir);
-  fs::remove_all(tmp_dir);
+  core::remove_directory(tmp_dir.c_str());
 }
 
 static void file_util_file_exists(benchmark::State& state) {
@@ -73,6 +70,11 @@ static void file_util_list_files(benchmark::State& state) {
     for (auto _ : state) {
       benchmark::DoNotOptimize(core::list_files(dir));
     }
+
+    for (int i = 0; i < 10; ++i) {
+      std::string file = dir + "/file" + std::to_string(i);
+      core::remove_file(file.c_str());
+    }
   });
 }
 BENCHMARK(file_util_list_files);
@@ -102,5 +104,34 @@ static void file_util_sanitize_component(benchmark::State& state) {
   }
 }
 BENCHMARK(file_util_sanitize_component);
+
+static void file_util_remove_file(benchmark::State& state) {
+  for (auto _ : state) {
+    const std::string tmp = "./tmp_to_remove.txt";
+    std::ofstream(tmp) << "delete me";
+    benchmark::DoNotOptimize(core::remove_file(tmp.c_str()));
+  }
+}
+BENCHMARK(file_util_remove_file);
+
+static void file_util_rename_file(benchmark::State& state) {
+  for (auto _ : state) {
+    const std::string old_name = "./tmp_old_name.txt";
+    const std::string new_name = "./tmp_new_name.txt";
+    std::ofstream(old_name) << "rename me";
+    core::rename_file(old_name.c_str(), new_name.c_str());
+    core::remove_file(new_name.c_str());
+  }
+}
+BENCHMARK(file_util_rename_file);
+
+static void file_util_create_directory(benchmark::State& state) {
+  for (auto _ : state) {
+    const std::string dir = "./tmp_bench_dir";
+    core::create_directory(dir.c_str());
+    core::remove_directory(dir.c_str());
+  }
+}
+BENCHMARK(file_util_create_directory);
 
 }  // namespace

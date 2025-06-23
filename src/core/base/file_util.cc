@@ -10,8 +10,11 @@
 #include <windows.h>
 #else
 #include <dirent.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include <cstring>
 #endif
 
 #include <cstddef>
@@ -139,19 +142,46 @@ int create_directory(const char* path) {
 #endif
 }
 
-void create_directories(const std::string& path) {
+int create_directories(const std::string& path) {
   std::string sanitized_path = sanitize_component(path, true);
   std::size_t pos = 0;
+  int result = 0;
 
   while ((pos = sanitized_path.find(DIR_SEPARATOR, pos)) != std::string::npos) {
     std::string dir = sanitized_path.substr(0, pos);
     if (!dir.empty() && !dir_exists(dir.c_str())) {
       if (create_directory(dir.c_str()) != 0) {
         std::cerr << "Failed to create directory: " << dir << std::endl;
+        result++;
       }
     }
     pos++;
   }
+  return result;
+}
+
+int remove_file(const char* path) {
+#if IS_WINDOWS
+  return DeleteFileA(path) ? 0 : -1;
+#else
+  return std::remove(path);
+#endif
+}
+
+int remove_directory(const char* path) {
+#if IS_WINDOWS
+  return RemoveDirectoryA(path) ? 0 : -1;
+#else
+  return ::rmdir(path);
+#endif
+}
+
+int rename_file(const char* old_path, const char* new_path) {
+#if IS_WINDOWS
+  return MoveFileA(old_path, new_path) ? 0 : -1;
+#else
+  return std::rename(old_path, new_path);
+#endif
 }
 
 int write_binary_to_file(const void* binary_data,
