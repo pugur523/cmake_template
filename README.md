@@ -322,7 +322,7 @@ $ python3 ./src/build/scripts/build.py
 Running the above command will perform a debug build for the same platform/CPU architecture as your build environment.<br/>
 On Windows, you need to build in the **x64 Native Tools Command Prompt for VS 2022** because `vcvars64.bat` must be used to set up environment variables for x64.
 The build target will be generated in `//out/build/<platform>/<arch>/debug`, and the install target in `//out/install/<platform>/<arch>/debug`.<br/>
-If submodules are not set up correctly, you will get an error, so please initialize all submodules with `git submodule update --init` and try again.
+If submodules are not set up correctly, you will get an error, so please initialize all submodules with `git submodule update --init --recursive` and try again.
 
 ## How to Customize
 
