@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <format>
 #include <iterator>
 #include <queue>
 #include <string>
@@ -15,6 +16,34 @@ namespace core {
 
 [[nodiscard]] CORE_EXPORT std::string encode_escape(const std::string& input);
 [[nodiscard]] CORE_EXPORT std::string decode_escape(const std::string& input);
+
+constexpr char to_lower_ascii_char(char c) {
+  return (c >= 'A' && c <= 'Z') ? (c | 0x20) : c;
+}
+
+constexpr char to_upper_ascii_char(char c) {
+  return (c >= 'a' && c <= 'z') ? (c & ~0x20) : c;
+}
+
+template <std::size_t N>
+constexpr auto to_lower_ascii(const char (&input)[N]) {
+  std::array<char, N> result = {};
+  for (std::size_t i = 0; i < N - 1; ++i) {
+    result[i] = to_lower_ascii_char(input[i]);
+  }
+  result[N - 1] = '\0';
+  return result;
+}
+
+template <std::size_t N>
+constexpr auto to_upper_ascii(const char (&input)[N]) {
+  std::array<char, N> result = {};
+  for (std::size_t i = 0; i < N - 1; ++i) {
+    result[i] = to_upper_ascii_char(input[i]);
+  }
+  result[N - 1] = '\0';
+  return result;
+}
 
 CORE_EXPORT void to_lower(char* input);
 CORE_EXPORT void to_lower(std::string* input);
@@ -45,22 +74,17 @@ CORE_EXPORT std::size_t write_raw(char*& dest,
 template <typename... Args>
 std::size_t write_format(char*& cursor,
                          const char* const end,
-                         const char* fmt,
-                         Args... args) {
+                         std::format_string<Args...> fmt,
+                         Args&&... args) {
   std::ptrdiff_t remaining = end - cursor;
   if (remaining <= 0) {
     return 0;
   }
 
-  int result = std::snprintf(cursor, static_cast<std::size_t>(remaining), fmt,
-                             std::forward<Args>(args)...);
+  auto result = std::format_to_n(cursor, static_cast<std::size_t>(remaining),
+                                 fmt, std::forward<Args>(args)...);
 
-  if (result < 0) {
-    return 0;
-  }
-
-  std::size_t written = static_cast<std::size_t>(
-      std::min(result, static_cast<int>(remaining) - 1));
+  std::size_t written = result.out - cursor;
 
   cursor += written;
   return written;
@@ -69,8 +93,8 @@ std::size_t write_format(char*& cursor,
 inline bool starts_with(const std::string& input,
                         const std::string& prefix,
                         std::size_t index = 0) {
-  return input.length() >= prefix.length() &&
-         input.compare(index, prefix.length(), prefix) == 0;
+  return input.size() >= prefix.size() &&
+         input.compare(index, prefix.size(), prefix) == 0;
 }
 
 constexpr const char* kReset = "\033[0m";

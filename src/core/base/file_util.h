@@ -12,13 +12,14 @@
 
 namespace core {
 
-constexpr std::size_t kPathMaxLength = 4096;
+constexpr const std::size_t kPathMaxLength = 4096;
+constexpr const std::size_t kPredictedFilesNbPerDir = 64;
 
 [[nodiscard]] CORE_EXPORT bool file_exists(const char* file_name);
 [[nodiscard]] CORE_EXPORT bool dir_exists(const char* dir_name);
-[[nodiscard]] CORE_EXPORT std::string get_exe_path();
-[[nodiscard]] CORE_EXPORT std::string get_exe_dir();
-[[nodiscard]] CORE_EXPORT std::string get_resources_dir();
+[[nodiscard]] CORE_EXPORT const std::string& get_exe_path();
+[[nodiscard]] CORE_EXPORT const std::string& get_exe_dir();
+[[nodiscard]] CORE_EXPORT const std::string& get_resources_dir();
 [[nodiscard]] CORE_EXPORT std::vector<std::string> list_files(
     const std::string& path);
 CORE_EXPORT int create_directory(const char* path);
@@ -27,18 +28,18 @@ CORE_EXPORT int write_binary_to_file(const void* binary_data,
                                      std::size_t binary_size,
                                      const std::string& output_path);
 
+[[nodiscard]] CORE_EXPORT std::string file_extension(const std::string& path);
+
+[[nodiscard]] CORE_EXPORT std::string sanitize_component(
+    const std::string& part,
+    bool is_first);
+
 template <typename T>
 inline int write_binary_to_file(const std::vector<T>& data,
                                 const std::string& output_path) {
   return write_binary_to_file(static_cast<const void*>(data.data()),
                               data.size() * sizeof(T), output_path);
 }
-
-[[nodiscard]] CORE_EXPORT std::string file_extension(const std::string& path);
-
-[[nodiscard]] CORE_EXPORT std::string sanitize_component(
-    const std::string& part,
-    bool is_first);
 
 template <typename T>
 [[nodiscard]] inline std::string to_string_path_part(const T& part) {
@@ -48,7 +49,7 @@ template <typename T>
     return std::string(part);
   } else {
     static_assert(std::is_same_v<T, void>,
-                  "join_path: unsupported path element type");
+                  "to_string_path_part: unsupported path element type");
   }
 }
 

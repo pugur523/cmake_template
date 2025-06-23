@@ -40,7 +40,9 @@ option(BUILD_PROGRAM "build standalone executable" TRUE)
 option(INSTALL_PROGRAM "install standalone executable" TRUE)
 option(INSTALL_LIBS "install libraries" TRUE)
 option(BUILD_SHARED "build libraries as shared" TRUE)
+option(BUILD_BENCHMARK "build benchmark module" TRUE)
 option(BUILD_TESTING "build testing module" TRUE)
+option(INSTALL_BENCHMARK "install benchmark module" FALSE)
 option(INSTALL_TESTING "install testing module" FALSE)
 
 string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} lower_arch)
@@ -200,7 +202,9 @@ build program: ${BUILD_PROGRAM}
 install program: ${INSTALL_PROGRAM}
 install libs: ${INSTALL_LIBS}
 build shared: ${BUILD_SHARED}
+build benchmark: ${BUILD_BENCHMARK}
 build testing: ${BUILD_TESTING}
+install benchmark: ${INSTALL_BENCHMARK}
 install testing: ${INSTALL_TESTING}
 enable verbose: ${ENABLE_VERBOSE}
 enable lto: ${ENABLE_LTO}
@@ -230,4 +234,9 @@ if(BUILD_TESTING)
   setup_gtest()
   enable_testing()
   add_subdirectory(testing)
+endif()
+
+if(BUILD_BENCHMARK)
+  setup_google_benchmark()
+  add_subdirectory(benchmark)
 endif()

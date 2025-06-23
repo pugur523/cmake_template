@@ -45,45 +45,51 @@ bool dir_exists(const char* dir_name) {
 #endif
 }
 
-std::string get_exe_path() {
-  char path[kPathMaxLength] = {};
-
+const std::string& get_exe_path() {
+  static const std::string cached_path = []() -> std::string {
 #if IS_WINDOWS
-  DWORD len = GetModuleFileNameA(nullptr, path, MAX_PATH);
-  if (len == 0 || len >= MAX_PATH) {
-    return "";
-  }
+    char path[MAX_PATH] = {};
+    DWORD len = GetModuleFileNameA(nullptr, path, MAX_PATH);
+    if (len == 0 || len >= MAX_PATH) {
+      return "";
+    }
+    return (len == 0 || len >= MAX_PATH) ? "" : std::string(path, len);
 #else
-  ssize_t count = readlink("/proc/self/exe", path, sizeof(path) - 1);
-  if (count == -1) {
-    return "";
-  }
-  path[count] = '\0';
+    char path[kPathMaxLength] = {};
+    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+    return len == -1 ? "" : std::string(path, len);
 #endif
+  }();
 
-  return std::string(path);
+  return cached_path;
 }
 
-std::string get_exe_dir() {
-  std::string exe_path = get_exe_path();
-  if (exe_path.empty()) {
-    return "";
-  }
+const std::string& get_exe_dir() {
+  static const std::string cached_dir = []() -> std::string {
+    std::string exe_path = get_exe_path();
+    if (exe_path.empty()) {
+      return "";
+    }
 
-  std::size_t pos = exe_path.find_last_of(DIR_SEPARATOR);
-  if (pos == std::string::npos) {
-    return "";
-  }
+    std::size_t pos = exe_path.find_last_of(DIR_SEPARATOR);
+    if (pos == std::string::npos) {
+      return "";
+    }
 
-  return exe_path.substr(0, pos);
+    return exe_path.substr(0, pos);
+  }();
+  return cached_dir;
 }
 
-std::string get_resources_dir() {
-  return join_path(get_exe_dir(), "resources");
+const std::string& get_resources_dir() {
+  static const std::string cached_resources_dir =
+      join_path(get_exe_dir(), "resources");
+  return cached_resources_dir;
 }
 
 std::vector<std::string> list_files(const std::string& path) {
   std::vector<std::string> files;
+  files.reserve(kPredictedFilesNbPerDir);
 
 #if IS_WINDOWS
   std::string search_path = path + "\\*";
@@ -98,7 +104,7 @@ std::vector<std::string> list_files(const std::string& path) {
   do {
     std::string name = find_data.cFileName;
     if (name != "." && name != "..") {
-      files.push_back(name);
+      files.emplace_back(name);
     }
   } while (FindNextFileA(hFind, &find_data) != 0);
 
@@ -116,7 +122,7 @@ std::vector<std::string> list_files(const std::string& path) {
   while ((entry = readdir(dir)) != nullptr) {
     std::string name = entry->d_name;
     if (name != "." && name != "..") {
-      files.push_back(name);
+      files.emplace_back(name);
     }
   }
 

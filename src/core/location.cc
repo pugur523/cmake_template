@@ -27,13 +27,8 @@ void Location::to_string(char* buf, std::size_t buf_size) const {
   char* cursor = buf;
   const char* end = buf + buf_size;
 
-  write_format(cursor, end, "%s", file_);
-  write_format(cursor, end, "%s", ":");
-  write_format(cursor, end, "%d", line_);
-  write_format(cursor, end, "%s", " (");
-  write_format(cursor, end, "%s", function_);
-  write_format(cursor, end, "%s", ") @");
-  write_format(cursor, end, "%p", program_counter_);
+  write_format(cursor, end, "@{} {} at {}:{}", program_counter_, function_,
+               file_, line_);
 
   if (cursor < end) {
     *cursor = '\0';

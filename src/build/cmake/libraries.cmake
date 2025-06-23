@@ -1,6 +1,3 @@
-function(setup_zlib)
-endfunction()
-
 macro(setup_gtest)
   set(GTEST_ROOT_DIR ${THIRD_PARTY_DIR}/gtest)
   set(GTEST_DIR ${GTEST_ROOT_DIR}/googletest)
@@ -23,6 +20,25 @@ macro(setup_gtest)
   if(BUILD_GMOCK)
     set(GMOCK_LIBRARIES gmock gmock_main)
   endif()
+endmacro()
+
+macro(setup_google_benchmark)
+  set(GOOGLE_BENCHMARK_DIR ${THIRD_PARTY_DIR}/google_benchmark)
+  set(GOOGLE_BENCHMARK_INCLUDE_DIR ${GOOGLE_BENCHMARK_DIR}/include)
+
+  set(BENCHMARK_ENABLE_TESTING FALSE)
+  set(BENCHMARK_ENABLE_EXCEPTIONS TRUE)
+  set(BENCHMARK_ENABLE_LTO ${ENABLE_LTO})
+  set(BENCHMARK_USE_LIBCXX TRUE)
+  set(BENCHMARK_ENABLE_WERROR ${WARNINGS_AS_ERRORS})
+  set(BENCHMARK_FORCE_WERROR ${WARNINGS_AS_ERRORS})
+
+  set(BENCHMARK_ENABLE_INSTALL FALSE)
+  set(BENCHMARK_INSTALL_DOCS FALSE)
+
+  add_subdirectory(${GOOGLE_BENCHMARK_DIR})
+
+  set(GOOGLE_BENCHMARK_LIBRARIES benchmark::benchmark)
 endmacro()
 
 macro(setup_llvm)

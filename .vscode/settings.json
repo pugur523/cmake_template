@@ -71,14 +71,7 @@
     "typeinfo": "cpp",
     "variant": "cpp"
   },
-  "C_Cpp.codeAnalysis.clangTidy.enabled": true,
   "C_Cpp.intelliSenseEngine": "disabled",
-  "C_Cpp.errorSquiggles": "enabled",
-  "C_Cpp.clang_format_style": "file",
-  "C_Cpp.clang_format_sortIncludes": true,
-  "C_Cpp.default.compileCommands": [
-    "${workspaceFolder}/out/build/compile_commands.json",
-  ],
   "clangd.arguments": [
     "--compile-commands-dir=${workspaceFolder}/out/build",
     "--header-insertion=never",

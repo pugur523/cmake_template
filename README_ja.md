@@ -51,11 +51,12 @@ LLVM系統のツールを活用し、軽量で高度に最適化されたC/C++�
 
 すぐに開発を始められるように、デフォルトで以下のライブラリがサブモジュールとして組み込まれています。
 
-|                      Library Name                       | Overview                                |
-| :-----------------------------------------------------: | :-------------------------------------- |
-| [**Google Test**](https://github.com/google/googletest) | 強力なテストスイートフレームワーク      |
-|              [**zlib**](https://zlib.net/)              | ログファイルなどの圧縮/解凍に最適       |
-|    [**toml11**](https://github.com/ToruNiina/toml11)    | configなどに最適なTOMLパーサー/リーダー |
+|                        Library Name                         | Overview                                                         |
+| :---------------------------------------------------------: | :--------------------------------------------------------------- |
+| [**Google Benchmark**](https://github.com/google/benchmark) | パフォーマンスプロファイリングに最適なベンチマークフレームワーク |
+|   [**Google Test**](https://github.com/google/googletest)   | 強力なテストスイートフレームワーク                               |
+|                [**zlib**](https://zlib.net/)                | ログファイルなどの圧縮/解凍に最適                                |
+|      [**toml11**](https://github.com/ToruNiina/toml11)      | configなどに最適なTOMLパーサー/リーダー                          |
 
 これらのライブラリが必要ない場合には[外部ライブラリ管理](#外部ライブラリ管理)を参照のもと、プロジェクトから削除してください。<br/>
 
@@ -326,7 +327,7 @@ $ python3 ./src/build/scripts/build.py
 上記のコマンドを実行するとビルド環境と同じプラットフォーム / CPUアーキテクチャ向けのdebug buildが行われます。<br/>
 Windows上では`vcvars64.bat`によりx64用の環境変数を設定する必要があるため、**x64 Native Tools Command Prompt for VS 2022**上でビルドを行う必要があります。
 build targetは`//out/build/<platform>/<arch>/debug`、install targetは`//out/install/<platform>/<arch>/debug`に生成されます。<br/>
-このとき、サブモジュールが正しくセットアップされていない場合はエラーが出るので`git submodule update --init`で全てのサブモジュールを初期化してから再実行してください。
+このとき、サブモジュールが正しくセットアップされていない場合はエラーが出るので`git submodule update --init --recursive`で全てのサブモジュールを初期化してから再実行してください。
 
 ## カスタマイズ方法
 
@@ -468,7 +469,7 @@ $ python3 ./src/build/scripts/build.py \
 * `opt_report/index.html`
 * `xray/<project_name>/xray_trace.<project_name>.json`
 
-が生成されます。`index.html`はブラウザなどでそのファイルを開くことでUIつきで閲覧することができ、`xray_trace.<project_name>.json`は、Chromiumベースのブラウザで[about:tracing](chrome://tracing/)から開くことができます。細かい仕様についてはLLVMが公開しているllvm-cov、llvm-opt-viewer、llvm-xrayのドキュメントや、Chromiumが公開している[trace event profiling toolのドキュメント](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/)を確認してください。
+が生成されます。`index.html`はブラウザなどでそのファイルを開くことでGUIつきで閲覧することができ、`xray_trace.<project_name>.json`は、Chromiumベースのブラウザで[about:tracing](chrome://tracing/)から開くことができます。細かい仕様についてはLLVMが公開しているllvm-cov、llvm-opt-viewer、llvm-xrayのドキュメントや、Chromiumが公開している[trace event profiling toolのドキュメント](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/)を確認してください。
 
 ## ビルド成果物の配布
 

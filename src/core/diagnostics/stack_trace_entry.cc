@@ -12,29 +12,29 @@ void StackTraceEntry::to_string(char* out_buf, std::size_t out_buf_size) const {
   const char* const end = out_buf + out_buf_size;
 
   if (use_index) {
-    std::size_t index_len = write_format(cursor, end, "@%zu", index);
+    std::size_t index_len = write_format(cursor, end, "@{}", index);
     padding(cursor, end, index_len, kIndexAlignLength);
   }
 
   if (address[0]) {
-    std::size_t addr_len = write_format(cursor, end, "%s", address.data());
+    std::size_t addr_len = write_format(cursor, end, "{}", address.data());
     padding(cursor, end, addr_len, kAddressAlignLength);
   }
 
   const char* func = function[0] ? function.data() : kUnknownFunction;
-  std::size_t func_len = write_format(cursor, end, "%s", func);
+  std::size_t func_len = write_format(cursor, end, "{}", func);
 
   if (offset > 0) {
-    std::size_t offset_len = write_format(cursor, end, "+0x%zx", offset);
+    std::size_t offset_len = write_format(cursor, end, "+0x{}", offset);
     func_len += offset_len;
   }
 
   padding(cursor, end, func_len, kFunctionAlignLength);
 
   if (file[0]) {
-    write_format(cursor, end, " at %s", file.data());
+    write_format(cursor, end, " at {}", file.data());
     if (line > 0) {
-      write_format(cursor, end, ":%zu", line);
+      write_format(cursor, end, ":{}", line);
     }
   }
 

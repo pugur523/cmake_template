@@ -50,11 +50,12 @@ It leverages LLVM tools to provide a lightweight, highly optimized C/C++ build s
 
 The following libraries are included as submodules by default so you can start development right away.
 
-|                      Library Name                       | Overview                                               |
-| :-----------------------------------------------------: | :----------------------------------------------------- |
-| [**Google Test**](https://github.com/google/googletest) | Powerful test suite framework                          |
-|              [**zlib**](https://zlib.net/)              | Ideal for compression/decompression of log files, etc. |
-|    [**toml11**](https://github.com/ToruNiina/toml11)    | TOML parser/reader, ideal for configs                  |
+|                        Library Name                         | Overview                                               |
+| :---------------------------------------------------------: | :----------------------------------------------------- |
+| [**Google Benchmark**](https://github.com/google/benchmark) | Optimal benchmark framework for performance profiling  |
+|   [**Google Test**](https://github.com/google/googletest)   | Powerful test suite framework                          |
+|                [**zlib**](https://zlib.net/)                | Ideal for compression/decompression of log files, etc. |
+|      [**toml11**](https://github.com/ToruNiina/toml11)      | TOML parser/reader, ideal for configs                  |
 
 If you do not need these libraries, please refer to [How to Manage Libraries](#how-to-manage-libraries) and remove them from your project.<br/>
 
@@ -462,7 +463,7 @@ As shown in the [Customize Build Arguments](#customize-build-arguments) section,
 * `opt_report/index.html`
 * `xray/<project_name>/xray_trace.<project_name>.json`
 
-You can view `index.html` in your browser with a UI, and open `xray_trace.<project_name>.json` in Chromium-based browsers via [about:tracing](chrome://tracing/). For details, refer to the official documentation for llvm-cov, llvm-opt-viewer, llvm-xray, and [Chromium's trace event profiling tool documentation](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/).
+You can view `index.html` in your browser with a GUI, and open `xray_trace.<project_name>.json` in Chromium-based browsers via [about:tracing](chrome://tracing/). For details, refer to the official documentation for llvm-cov, llvm-opt-viewer, llvm-xray, and [Chromium's trace event profiling tool documentation](https://www.chromium.org/developers/how-tos/trace-event-profiling-tool/).
 
 ## Distributing Build Artifacts
 The build artifacts are placed in the `//out/install/<platform>/<arch>/<build_type>` directory.
