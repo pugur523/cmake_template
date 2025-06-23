@@ -7,6 +7,7 @@ table for GitHub Actions step summary.
 
 import sys
 import hashlib
+import os
 from pathlib import Path
 
 
@@ -63,12 +64,12 @@ def main(artifact_dir: Path):
     for path in sorted(artifact_dir.rglob("*")):
         if not path.is_file():
             continue
-        os, arch, build_type = parse_info(path)
-        rel_file = path.relative_to(artifact_dir)
+        platform, arch, build_type = parse_info(path)
+        basename = os.path.basename(path)
         size = format_size(path.stat().st_size)
         digest = sha256sum(path)
         print(
-            f"| {os} | {arch} | {build_type} | `{rel_file}` | {size} | `{digest[:10]}` |"
+            f"| {platform} | {arch} | {build_type} | `{basename}` | {size} | `{digest[:10]}` |"
         )
 
 
