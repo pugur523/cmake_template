@@ -94,7 +94,7 @@ jobs:
           sudo apt-get install -y libunwind-${{ matrix.llvm_version }}-dev
 
           # Set up alternatives
-          for bin in clang clang++ clang-tidy; do
+          for bin in clang clang++ clang-tidy clang-format llvm-ar; do
             sudo update-alternatives --remove-all "$bin" 2>/dev/null || true
           done
 
@@ -102,16 +102,25 @@ jobs:
           sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${{ matrix.llvm_version }} 100
           sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-${{ matrix.llvm_version }} 100
           sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-${{ matrix.llvm_version }} 100
+          sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar /usr/bin/llvm-ar-${{ matrix.llvm_version }} 100
+          sudo update-alternatives --install /usr/bin/llvm-nm llvm-nm /usr/bin/llvm-nm-${{ matrix.llvm_version }} 100
+          sudo update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib /usr/bin/llvm-ranlib-${{ matrix.llvm_version }} 100
 
           sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.llvm_version }}
           sudo update-alternatives --set clang++ /usr/bin/clang++-${{ matrix.llvm_version }}
           sudo update-alternatives --set clang-tidy /usr/bin/clang-tidy-${{ matrix.llvm_version }}
           sudo update-alternatives --set clang-format /usr/bin/clang-format-${{ matrix.llvm_version }}
+          sudo update-alternatives --set llvm-ar /usr/bin/llvm-ar-${{ matrix.llvm_version }}
+          sudo update-alternatives --set llvm-nm /usr/bin/llvm-nm-${{ matrix.llvm_version }}
+          sudo update-alternatives --set llvm-ranlib /usr/bin/llvm-ranlib-${{ matrix.llvm_version }}
 
           clang --version
           clang++ --version
           clang-tidy --version
           clang-format --version
+          llvm-ar --version
+          llvm-nm --version
+          llvm-ranlib --version
 
       - name: Install dependencies (MinGW)
         if: matrix.target_platform == 'mingw'

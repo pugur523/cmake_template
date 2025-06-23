@@ -1,6 +1,7 @@
 #include "core/base/string_util.h"
 
 #include <algorithm>
+#include <array>
 #include <cuchar>
 #include <queue>
 #include <string>
