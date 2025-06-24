@@ -13,7 +13,7 @@ static constexpr std::size_t kFunctionStrLength = 256;
 static constexpr std::size_t kFileStrLength = 512;
 struct CORE_EXPORT StackTraceEntry {
  public:
-  StackTraceEntry() noexcept : use_index(false) {
+  StackTraceEntry() noexcept {
     address.fill('\0');
     function.fill('\0');
     file.fill('\0');
@@ -27,7 +27,7 @@ struct CORE_EXPORT StackTraceEntry {
   std::size_t index = 0;
   std::size_t line = 0;
   std::size_t offset = 0;
-  bool use_index : 1;
+  bool use_index : 1 = false;
 
   static constexpr std::size_t kIndexAlignLength = 7;
   static constexpr std::size_t kAddressAlignLength = 20;

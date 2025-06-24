@@ -1,12 +1,12 @@
-set(BENCHMARK_NAME ${MAIN_EXECUTABLE_NAME_FROM_CONFIG}_benchmark)
+set(BENCHMARK_NAME ${MAIN_EXECUTABLE_NAME_FROM_CONFIG}_bench)
 
 message(STATUS "Configuring ${BENCHMARK_NAME}...")
 
 set(SOURCES
-  benchmark_main.cc
+  bench_main.cc
 
-  ${PROJECT_SOURCE_DIR}/core/base/file_util_benchmark.cc
-  ${PROJECT_SOURCE_DIR}/core/base/string_util_benchmark.cc
+  ${PROJECT_SOURCE_DIR}/core/base/file_util_bench.cc
+  ${PROJECT_SOURCE_DIR}/core/base/string_util_bench.cc
 )
 
 add_executable(${BENCHMARK_NAME} ${SOURCES})

@@ -15,29 +15,29 @@ namespace core {
 
 namespace {
 
-enum class ArgType {
-  Long,
-  Short,
-  DoubleDash,
-  LoneDash,
-  Positional,
-  Invalid,
+enum class ArgType : uint8_t {
+  kLong = 0,
+  kShort = 1,
+  kDoubleDash = 2,
+  kLoneDash = 3,
+  kPositional = 4,
+  kInvalid = 5,
 };
 
 ArgType classify_argument(const std::string& arg) {
   if (arg == "--") {
-    return ArgType::DoubleDash;
+    return ArgType::kDoubleDash;
   }
   if (arg == "-") {
-    return ArgType::LoneDash;
+    return ArgType::kLoneDash;
   }
   if (starts_with(arg, "--")) {
-    return arg.length() > 2 ? ArgType::Long : ArgType::Invalid;
+    return arg.length() > 2 ? ArgType::kLong : ArgType::kInvalid;
   }
   if (starts_with(arg, "-")) {
-    return arg.length() > 1 ? ArgType::Short : ArgType::Invalid;
+    return arg.length() > 1 ? ArgType::kShort : ArgType::kInvalid;
   }
-  return ArgType::Positional;
+  return ArgType::kPositional;
 }
 
 bool is_help_flag(const std::string& arg) {
@@ -93,22 +93,22 @@ ParseResult ArgumentParser::parse(int argc, char** argv) {
 
     ArgType type = classify_argument(arg);
     switch (type) {
-      case ArgType::DoubleDash:
+      case ArgType::kDoubleDash:
         positional_args.insert(positional_args.end(), args.begin() + i + 1,
                                args.end());
         i = args.size();
         break;
-      case ArgType::LoneDash:
-      case ArgType::Positional: positional_args.push_back(arg); break;
-      case ArgType::Invalid:
+      case ArgType::kLoneDash:
+      case ArgType::kPositional: positional_args.push_back(arg); break;
+      case ArgType::kInvalid:
         print_error("invalid option format: '" + arg + "'");
         return ParseResult::kErrorInvalidFormat;
-      case ArgType::Long:
-      case ArgType::Short: {
+      case ArgType::kLong:
+      case ArgType::kShort: {
         std::string optname, value;
         bool has_value = false;
 
-        if (type == ArgType::Long) {
+        if (type == ArgType::kLong) {
           auto eq = arg.find('=');
           if (eq != std::string::npos) {
             optname = arg.substr(2, eq - 2);
@@ -163,7 +163,7 @@ ParseResult ArgumentParser::parse(int argc, char** argv) {
             value = args[++i];
             if (starts_with(value, "-") && value != "-") {
               print_warn(
-                  "option '" + arg + "' value '" + value +
+                  "option '" + arg + "' value '" += value +=
                   "' looks like an option\nuse '=value' format if intended");
             }
           }
@@ -208,14 +208,14 @@ ParseResult ArgumentParser::parse(int argc, char** argv) {
 
 void ArgumentParser::print_warn(const std::string& message) const {
   std::cerr << program_name_ << ": " << kRed << kBold << "warn: " << kReset
-            << kBold << message << kReset << std::endl;
+            << kBold << message << kReset << "\n";
 }
 
 void ArgumentParser::print_error(const std::string& message) const {
   std::cerr << program_name_ << ": " << kRed << kBold << "error: " << kReset
             << kBold << message
             << "\nUse '-h' or '--help' to show the help message" << kReset
-            << std::endl;
+            << "\n";
 }
 
 void ArgumentParser::print_help() const {
@@ -252,14 +252,29 @@ void ArgumentParser::print_help() const {
     }
     for (const auto& name : option_order_) {
       const auto& opt = options_.at(name);
-      std::string display = "--" + name;
-      for (const auto& alias : reverse_aliases[name]) {
-        display =
-            (alias.length() == 1 ? "-" + alias + ", " : "--" + alias + ", ") +
-            display;
+      std::string display = "";
+      bool first = true;
+      for (int i = reverse_aliases[name].size() - 1; i >= 0; i--) {
+        const std::string alias = reverse_aliases[name][i];
+        if (first) {
+          first = false;
+        } else {
+          display.append(", ");
+        }
+
+        if (alias.length() == 1) {
+          display.append("-" + alias);
+        } else {
+          display.append("--" + alias);
+        }
       }
+      if (!first) {
+        display.append(", ");
+      }
+      display.append("--" + name);
+
       if (opt->has_value()) {
-        display += "=<value>";
+        display.append("=<value>");
       }
       std::cout << "  " << std::left << std::setw(25) << display
                 << opt->description();

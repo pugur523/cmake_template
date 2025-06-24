@@ -17,9 +17,12 @@ constexpr const std::size_t kPredictedFilesNbPerDir = 64;
 
 [[nodiscard]] CORE_EXPORT bool file_exists(const char* file_name);
 [[nodiscard]] CORE_EXPORT bool dir_exists(const char* dir_name);
+[[nodiscard]] CORE_EXPORT std::string read_file(const char* path);
 [[nodiscard]] CORE_EXPORT const std::string& get_exe_path();
 [[nodiscard]] CORE_EXPORT const std::string& get_exe_dir();
 [[nodiscard]] CORE_EXPORT const std::string& get_resources_dir();
+[[nodiscard]] CORE_EXPORT bool is_executable_in_path(
+    const char* executable_name);
 [[nodiscard]] CORE_EXPORT std::vector<std::string> list_files(
     const std::string& path);
 CORE_EXPORT int create_directory(const char* path);

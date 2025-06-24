@@ -81,12 +81,12 @@ void string_util_decode_escape_long(benchmark::State& state) {
 BENCHMARK(string_util_decode_escape_long);
 
 void string_util_to_lower_ascii(benchmark::State& state) {
-  char* buf = new char[kLongString.length() + 1];
+  constexpr const auto lowered =
+      core::to_lower_ascii("AbCdeFgHijkLmNOPQRStuVwXYZ");
+  char* buf = new char[lowered.size() + 1];
   for (auto _ : state) {
-    constexpr const auto lowered =
-        core::to_lower_ascii("AbCdeFgHijkLmNOPQRStuVwXYZ");
     benchmark::DoNotOptimize(buf);
-    core::write_raw(buf, lowered.data(), lowered.size() + 1);
+    core::write_raw(buf, lowered.data(), lowered.size());
   }
   delete[] buf;
 }
@@ -94,11 +94,11 @@ BENCHMARK(string_util_to_lower_ascii);
 
 void string_util_to_lower_char_ptr(benchmark::State& state) {
   char* buf = new char[kLongString.length() + 1];
-  core::write_raw(buf, kLongString.c_str(), kLongString.length() + 1);
+  core::write_raw(buf, kLongString.c_str(), kLongString.length());
   for (auto _ : state) {
     core::to_lower(buf);
     benchmark::DoNotOptimize(buf);
-    core::write_raw(buf, kLongString.c_str(), kLongString.length() + 1);
+    core::write_raw(buf, kLongString.c_str(), kLongString.length());
   }
   delete[] buf;
 }
@@ -123,11 +123,11 @@ BENCHMARK(string_util_to_lower_const_string_ref);
 
 void string_util_to_upper_char_ptr(benchmark::State& state) {
   char* buf = new char[kLongString.length() + 1];
-  core::write_raw(buf, kLongString.c_str(), kLongString.length() + 1);
+  core::write_raw(buf, kLongString.c_str(), kLongString.length());
   for (auto _ : state) {
     core::to_upper(buf);
     benchmark::DoNotOptimize(buf);
-    core::write_raw(buf, kLongString.c_str(), kLongString.length() + 1);
+    core::write_raw(buf, kLongString.c_str(), kLongString.length());
   }
   delete[] buf;
 }
@@ -307,8 +307,7 @@ void string_util_write_format_int_string(benchmark::State& state) {
   for (auto _ : state) {
     char* cursor = buffer.data();
     const char* end = buffer.data() + buffer_size;
-    benchmark::DoNotOptimize(
-        core::write_format(cursor, end, kFormatString, 123, "benchmark"));
+    core::write_format(cursor, end, kFormatString, 123, "benchmark");
   }
 }
 BENCHMARK(string_util_write_format_int_string);
@@ -321,8 +320,7 @@ void string_util_write_format_long_output(benchmark::State& state) {
   for (auto _ : state) {
     char* cursor = buffer.data();
     const char* end = buffer.data() + buffer_size;
-    benchmark::DoNotOptimize(core::write_format(cursor, end, "Long text: {}",
-                                                long_text_arg.c_str()));
+    core::write_format(cursor, end, "Long text: {}", long_text_arg.c_str());
   }
 }
 BENCHMARK(string_util_write_format_long_output);

@@ -21,8 +21,6 @@ Location::Location(const char* file,
                                    kPlatformMaxFrames);
 }
 
-Location::~Location() = default;
-
 void Location::to_string(char* buf, std::size_t buf_size) const {
   char* cursor = buf;
   const char* end = buf + buf_size;

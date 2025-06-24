@@ -15,10 +15,11 @@ macro(setup_gtest)
 
   add_subdirectory(${GTEST_ROOT_DIR})
 
-  set(GTEST_LIBRARIES gtest gtest_main)
+  # Do not link `gtest_main` and `gmock_main` otherwise the testing will contain duplicate entrypoints.
+  set(GTEST_LIBRARIES gtest)
 
   if(BUILD_GMOCK)
-    set(GMOCK_LIBRARIES gmock gmock_main)
+    set(GMOCK_LIBRARIES gmock)
   endif()
 endmacro()
 

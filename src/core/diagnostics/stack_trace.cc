@@ -44,14 +44,19 @@ void stack_trace_entries_to_buffer(
   char line_buffer[kLineBufferSize];
   std::size_t written = 0;
 
-  for (std::size_t i = 0; i < count && written < buffer_size - 1; ++i) {
+  for (std::size_t i = 0; i < count && written < buffer_size - 1; i++) {
     entries[i].to_string(line_buffer, sizeof(line_buffer));
     std::size_t line_len = safe_strlen(line_buffer);
 
     if (written + line_len + 1 < buffer_size) {
-      std::snprintf(buffer + written, buffer_size - written, "%s", line_buffer);
-      written += line_len;
-      buffer[written++] = '\n';
+      char* cursor = buffer + written;
+      std::size_t raw_written = write_raw(cursor, line_buffer, line_len);
+      written += raw_written;
+
+      if (written < buffer_size - 1) {
+        buffer[written] = '\n';
+        written++;
+      }
     } else {
       break;
     }
@@ -92,13 +97,12 @@ void format_address_safe(uintptr_t addr,
 
 const char* demangle_symbol_safe(const char* mangled_name,
                                  char* demangled_buffer,
-                                 std::size_t buffer_size) {
-  if (!mangled_name || !demangled_buffer || buffer_size == 0) {
+                                 std::size_t demangled_len) {
+  if (!mangled_name || !demangled_buffer || demangled_len == 0) {
     return mangled_name;
   }
 
   int status = 0;
-  std::size_t demangled_len = buffer_size;
 
   // Try to demangle - __cxa_demangle may allocate internally but we control the
   // output buffer
@@ -112,7 +116,7 @@ const char* demangle_symbol_safe(const char* mangled_name,
 
   // If demangling succeeded but used a different buffer, copy what we can
   if (demangled && status == 0) {
-    write_raw(demangled_buffer, demangled, buffer_size);
+    write_raw(demangled_buffer, demangled, demangled_len);
     free(demangled);  // __cxa_demangle allocated this
     return demangled_buffer;
   }
@@ -274,7 +278,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     format_address_safe(static_cast<uintptr_t>(instruction_pointer),
                         address_buffer, sizeof(address_buffer));
     char* address_cursor = entry.address.data();
-    write_raw(address_cursor, address_buffer, kAddressStrLength);
+    write_raw(address_cursor, address_buffer, sizeof(address_buffer));
 
     unw_word_t symbol_offset = 0;
     const char* function_name = "";
@@ -289,9 +293,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
       Dl_info dl_info;
       std::memset(&dl_info, 0, sizeof(dl_info));
 
-      if (dladdr(reinterpret_cast<const void*>(
-                     static_cast<uintptr_t>(instruction_pointer)),
-                 &dl_info)) {
+      if (dladdr(std::bit_cast<const void*>(instruction_pointer), &dl_info)) {
         if (dl_info.dli_sname) {
           char* symbol_cursor = symbol_buffer;
           write_raw(symbol_cursor, dl_info.dli_sname, kSymbolBufferSize);
@@ -312,15 +314,13 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     }
 
     char* function_cursor = entry.function.data();
-    write_raw(function_cursor, function_name, kFunctionStrLength);
+    write_raw(function_cursor, function_name, safe_strlen(function_name));
 
     const char* file_name = "";
     Dl_info dl_info;
     std::memset(&dl_info, 0, sizeof(dl_info));
 
-    if (dladdr(reinterpret_cast<const void*>(
-                   static_cast<uintptr_t>(instruction_pointer)),
-               &dl_info)) {
+    if (dladdr(std::bit_cast<const void*>(instruction_pointer), &dl_info)) {
       if (dl_info.dli_fname) {
         file_name = dl_info.dli_fname;
       }
@@ -329,8 +329,8 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     char* file_cursor = entry.file.data();
     write_raw(file_cursor, file_name, kFileStrLength);
 
-    ++collected_count;
-    ++frame_index;
+    collected_count++;
+    frame_index++;
   } while (unw_step(&cursor) > 0);
 
   return collected_count;
@@ -357,7 +357,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
 
     format_address_safe(current_address, address_buf, sizeof(address_buf));
     char* address_cursor = entry.address.data();
-    write_raw(address_cursor, address_buf, kAddressStrLength);
+    write_raw(address_cursor, address_buf, sizeof(address_buf));
 
     const char* function_name = "";
     const char* file_name = "";
@@ -369,7 +369,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     if (dladdr(reinterpret_cast<const void*>(current_address), &info)) {
       if (info.dli_sname) {
         char* symbol_cursor = symbol_buf;
-        write_raw(symbol_cursor, info.dli_sname, kSymbolBufferSize);
+        write_raw(symbol_cursor, info.dli_sname, sizeof(symbol_buf));
         function_name = demangle_symbol_safe(symbol_buf, demangled_buf,
                                              kDemangledBufferSize);
       }
@@ -469,7 +469,7 @@ std::string stack_trace_from_current_context(bool use_index,
   char buf[kBufSize];
   stack_trace_from_current_context(buf, kBufSize, use_index, first_frame + 1,
                                    max_frames);
-  return std::string(std::move(buf));
+  return std::string(buf);
 }
 
 void stack_trace_from_current_context(char* buffer,

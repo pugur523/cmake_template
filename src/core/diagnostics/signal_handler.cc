@@ -56,7 +56,7 @@ void signal_handler(int signal_number) {
             << "(" << now << " in unix time)\n"
             << signal_to_string(signal_number) << " received by PID "
             << get_pid() << "(TID " << std::this_thread::get_id() << ")\n"
-            << stack_trace_from_current_context() << std::endl;
+            << stack_trace_from_current_context() << "\n";
 
   std::exit(EXIT_FAILURE);
 }

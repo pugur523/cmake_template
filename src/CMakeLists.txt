@@ -238,5 +238,5 @@ endif()
 
 if(BUILD_BENCHMARK)
   setup_google_benchmark()
-  add_subdirectory(benchmark)
+  add_subdirectory(bench)
 endif()

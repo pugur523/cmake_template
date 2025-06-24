@@ -82,12 +82,13 @@ std::size_t write_format(char*& cursor,
     return 0;
   }
 
-  auto result = std::format_to_n(cursor, static_cast<std::size_t>(remaining),
-                                 fmt, std::forward<Args>(args)...);
-
+  auto result =
+      std::format_to_n(cursor, static_cast<std::size_t>(remaining - 1), fmt,
+                       std::forward<Args>(args)...);
   std::size_t written = result.out - cursor;
 
   cursor += written;
+  *cursor = '\0';
   return written;
 }
 

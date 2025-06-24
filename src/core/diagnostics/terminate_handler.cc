@@ -9,7 +9,7 @@ namespace core {
 void terminate_handler() {
   std::cout << "\nProgram terminated unexpectedly\n"
             << "Stack trace (most recent call last):\n"
-            << stack_trace_from_current_context() << std::endl;
+            << stack_trace_from_current_context() << "\n";
 
   std::exit(EXIT_FAILURE);
 }

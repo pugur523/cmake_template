@@ -17,7 +17,7 @@ class CORE_EXPORT Location {
            const char* function,
            const void* program_counter);
 
-  ~Location();
+  ~Location() = default;
 
   constexpr const char* file() const { return file_; }
   constexpr int line() const { return line_; }

@@ -17,7 +17,7 @@
 
 namespace core {
 
-enum class ParseResult {
+enum class ParseResult : uint8_t {
   kSuccess = 0,
   kShowHelp = 1,
   kShowVersion = 2,

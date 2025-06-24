@@ -7,6 +7,7 @@
 #include "build/build_config.h"
 #include "core/cli/arg_parser.h"
 #include "core/diagnostics/stack_trace.h"
+#include "core/location.h"
 
 namespace app {
 
@@ -60,14 +61,14 @@ int handle_arguments(int argc, char** argv) {
       }
     }
     std::cout << "]";
-    std::cout << std::endl;
+    std::cout << "\n";
   }
 
   if (stacktrace) {
     constexpr std::size_t kBufSize = 16384;
     char buf[kBufSize];
     core::stack_trace_from_current_context(buf, kBufSize);
-    std::cout << buf << std::endl;
+    std::cout << FROM_HERE << '\n' << buf << '\n';
   }
 
   return 0;

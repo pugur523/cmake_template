@@ -9,7 +9,7 @@ namespace core {
 
 void StackTraceEntry::to_string(char* out_buf, std::size_t out_buf_size) const {
   char* cursor = out_buf;
-  const char* const end = out_buf + out_buf_size;
+  const char* end = out_buf + out_buf_size;
 
   if (use_index) {
     std::size_t index_len = write_format(cursor, end, "@{}", index);

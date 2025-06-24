@@ -9,7 +9,7 @@
 
 namespace core {
 
-enum class Platform {
+enum class Platform : uint8_t {
   kUnknown = 0,
   kWindows = 1,
   kMac = 2,

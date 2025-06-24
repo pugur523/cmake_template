@@ -7,18 +7,22 @@
 #if IS_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #undef APIENTRY
+#include <io.h>
 #include <windows.h>
 #else
 #include <dirent.h>
 #include <errno.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cstring>
 #endif
 
+#include <fcntl.h>
+#include <sys/stat.h>
+
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -48,6 +52,61 @@ bool dir_exists(const char* dir_name) {
 #endif
 }
 
+std::string read_file(const char* path) {
+#if IS_WINDOWS
+  int fd = _open(path, _O_RDONLY | _O_BINARY);
+#else
+  int fd = open(path, O_RDONLY);
+#endif
+  if (fd < 0) {
+    std::cerr << "Failed to open file: " << path << " (" << std::strerror(errno)
+              << ")\n";
+    return "";
+  }
+
+  struct stat st;
+#if IS_WINDOWS
+  if (_fstat(fd, &st) != 0) {
+#else
+  if (fstat(fd, &st) != 0) {
+#endif
+    std::cerr << "Failed to stat file: " << path << " (" << std::strerror(errno)
+              << ")\n";
+#if IS_WINDOWS
+    _close(fd);
+#else
+    close(fd);
+#endif
+    return "";
+  }
+
+  std::string contents;
+  if (st.st_size > 0) {
+    contents.resize(static_cast<size_t>(st.st_size));
+    size_t total_read = 0;
+    while (total_read < static_cast<size_t>(st.st_size)) {
+#if IS_WINDOWS
+      int bytes = _read(fd, &contents[total_read],
+                        static_cast<unsigned int>(st.st_size - total_read));
+#else
+      ssize_t bytes = read(fd, &contents[total_read], st.st_size - total_read);
+#endif
+      if (bytes <= 0) {
+        break;
+      }
+      total_read += static_cast<size_t>(bytes);
+    }
+    contents.resize(total_read);
+  }
+
+#if IS_WINDOWS
+  _close(fd);
+#else
+  close(fd);
+#endif
+  return contents;
+}
+
 const std::string& get_exe_path() {
   static const std::string cached_path = []() -> std::string {
 #if IS_WINDOWS
@@ -69,7 +128,7 @@ const std::string& get_exe_path() {
 
 const std::string& get_exe_dir() {
   static const std::string cached_dir = []() -> std::string {
-    std::string exe_path = get_exe_path();
+    const std::string& exe_path = get_exe_path();
     if (exe_path.empty()) {
       return "";
     }
@@ -90,6 +149,70 @@ const std::string& get_resources_dir() {
   return cached_resources_dir;
 }
 
+bool is_executable_in_path(const char* executable_name) {
+#if IS_WINDOWS
+  const char* pathext = std::getenv("PATHEXT");
+  std::vector<std::string> exts;
+  if (pathext) {
+    std::string extstr = pathext;
+    size_t start = 0, end;
+    while ((end = extstr.find(';', start)) != std::string::npos) {
+      exts.push_back(extstr.substr(start, end - start));
+      start = end + 1;
+    }
+    exts.push_back(extstr.substr(start));
+  } else {
+    exts = {".EXE", ".BAT", ".CMD"};
+  }
+#endif
+
+  const char* path_env = std::getenv("PATH");
+  if (!path_env) {
+    return false;
+  }
+  std::string path_var = path_env;
+#if IS_WINDOWS
+  char sep = ';';
+#else
+  char sep = ':';
+#endif
+  size_t start = 0, end;
+  while ((end = path_var.find(sep, start)) != std::string::npos) {
+    std::string dir = path_var.substr(start, end - start);
+    std::string full_path = dir + DIR_SEPARATOR + executable_name;
+#if IS_WINDOWS
+    for (const auto& ext : exts) {
+      std::string candidate = full_path + ext;
+      if (file_exists(candidate.c_str())) {
+        return true;
+      }
+    }
+#else
+    if (file_exists(full_path.c_str()) &&
+        access(full_path.c_str(), X_OK) == 0) {
+      return true;
+    }
+#endif
+    start = end + 1;
+  }
+  // Check the last path entry
+  std::string dir = path_var.substr(start);
+  std::string full_path = dir + DIR_SEPARATOR + executable_name;
+#if IS_WINDOWS
+  for (const auto& ext : exts) {
+    std::string candidate = full_path + ext;
+    if (file_exists(candidate.c_str())) {
+      return true;
+    }
+  }
+#else
+  if (file_exists(full_path.c_str()) && access(full_path.c_str(), X_OK) == 0) {
+    return true;
+  }
+#endif
+  return false;
+}
+
 std::vector<std::string> list_files(const std::string& path) {
   std::vector<std::string> files;
   files.reserve(kPredictedFilesNbPerDir);
@@ -100,7 +223,7 @@ std::vector<std::string> list_files(const std::string& path) {
   HANDLE hFind = FindFirstFileA(search_path.c_str(), &find_data);
 
   if (hFind == INVALID_HANDLE_VALUE) {
-    std::cerr << "Cannot open directory: " << path << std::endl;
+    std::cerr << "Cannot open directory: " << path << "\n";
     return files;
   }
 
@@ -117,7 +240,7 @@ std::vector<std::string> list_files(const std::string& path) {
 #else
   DIR* dir = opendir(path.c_str());
   if (!dir) {
-    std::cerr << "Cannot open directory: " << path << std::endl;
+    std::cerr << "Cannot open directory: " << path << "\n";
     return files;
   }
 
@@ -151,7 +274,7 @@ int create_directories(const std::string& path) {
     std::string dir = sanitized_path.substr(0, pos);
     if (!dir.empty() && !dir_exists(dir.c_str())) {
       if (create_directory(dir.c_str()) != 0) {
-        std::cerr << "Failed to create directory: " << dir << std::endl;
+        std::cerr << "Failed to create directory: " << dir << "\n";
         result++;
       }
     }
@@ -189,15 +312,14 @@ int write_binary_to_file(const void* binary_data,
                          const std::string& output_path) {
   if (!binary_data || binary_size == 0) {
     std::cerr << "Invalid data or size (null or zero) for file: " << output_path
-              << std::endl;
+              << "\n";
     return 3;
   }
 
   std::unique_ptr<FILE, decltype(&fclose)> fp(fopen(output_path.c_str(), "wb"),
                                               &fclose);
   if (!fp) {
-    std::cerr << "Failed to open file for writing: " << output_path
-              << std::endl;
+    std::cerr << "Failed to open file for writing: " << output_path << "\n";
     std::perror("fopen");
     return 2;
   }
@@ -206,7 +328,7 @@ int write_binary_to_file(const void* binary_data,
   if (written != binary_size) {
     std::cerr << "Failed to write all data to file: " << output_path
               << " (written " << written << " / " << binary_size << ")"
-              << std::endl;
+              << "\n";
     std::perror("fwrite");
     return 1;
   }
