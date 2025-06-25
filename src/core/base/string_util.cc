@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cuchar>
 #include <queue>
 #include <string>
@@ -278,6 +279,30 @@ std::size_t safe_strlen(const char* str) {
     return 0;
   }
   return std::strlen(str);
+}
+
+void format_address_safe(uintptr_t addr,
+                         char* buffer,
+                         std::size_t buffer_size) {
+  if (!buffer || buffer_size < (sizeof(uintptr_t) * 2 + 3)) {
+    if (buffer && buffer_size > 0) {
+      buffer[0] = '\0';
+    }
+    return;
+  }
+
+  char* current_ptr = buffer;
+  current_ptr[0] = '0';
+  current_ptr[1] = 'x';
+  current_ptr += 2;
+
+  auto [ptr, ec] = std::to_chars(current_ptr, buffer + buffer_size, addr, 16);
+
+  if (ec == std::errc{}) {
+    *ptr = '\0';
+  } else {
+    buffer[0] = '\0';
+  }
 }
 
 void padding(char*& cursor,

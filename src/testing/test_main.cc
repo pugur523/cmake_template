@@ -5,12 +5,10 @@
 
 namespace {
 
-[[clang::xray_always_instrument]]
 void init_tests() {
   testing::InitGoogleTest();
 }
 
-[[clang::xray_always_instrument]]
 int run_tests() {
   return RUN_ALL_TESTS();
 }

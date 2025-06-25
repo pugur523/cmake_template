@@ -2,7 +2,7 @@
 name = "SampleProject"
 main_executable_name = "sample_project"
 version = "1.0.0"
-description = "the cmake-template sample project"
+description = "a cmake-template sample project"
 homepage = "https://example.com"
 c_version = "17"
 cxx_version = "20"

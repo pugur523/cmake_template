@@ -1,6 +1,7 @@
 #include "core/diagnostics/stack_trace.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
 #include <string>
 #include <utility>
@@ -65,35 +66,6 @@ void stack_trace_entries_to_buffer(
 }
 
 #if IS_UNIX
-void format_address_safe(uintptr_t addr,
-                         char* buffer,
-                         std::size_t buffer_size) {
-  if (!buffer || buffer_size < 3) {
-    if (buffer && buffer_size > 0) {
-      buffer[0] = '\0';
-    }
-    return;
-  }
-
-  // Use stack-based conversion to avoid any heap allocation
-  constexpr char hex_chars[] = "0123456789abcdef";
-  constexpr int addr_width = sizeof(void*) * 2;  // 16 for 64-bit, 8 for 32-bit
-
-  if (buffer_size <
-      static_cast<std::size_t>(addr_width + 3)) {  // "0x" + address + '\0'
-    buffer[0] = '\0';
-    return;
-  }
-
-  buffer[0] = '0';
-  buffer[1] = 'x';
-
-  // Convert address to hex string manually
-  for (int i = addr_width - 1; i >= 0; --i) {
-    buffer[2 + (addr_width - 1 - i)] = hex_chars[(addr >> (i * 4)) & 0xf];
-  }
-  buffer[addr_width + 2] = '\0';
-}
 
 const char* demangle_symbol_safe(const char* mangled_name,
                                  char* demangled_buffer,
@@ -114,26 +86,24 @@ const char* demangle_symbol_safe(const char* mangled_name,
     return demangled_buffer;
   }
 
-  // If demangling succeeded but used a different buffer, copy what we can
   if (demangled && status == 0) {
     write_raw(demangled_buffer, demangled, demangled_len);
     free(demangled);  // __cxa_demangle allocated this
     return demangled_buffer;
   }
 
-  // Fallback to original mangled name
   return mangled_name;
 }
 
-// Validate address range for Unix systems
-bool is_valid_address_unix(uintptr_t addr) {
-  // Skip NULL addresses and very low addresses (likely invalid)
+#endif  // IS_UNIX
+
+bool is_valid_address(uintptr_t addr) {
   if (addr == 0 || addr < 0x1000) {
     return false;
   }
 
 // Basic sanity check for user space addresses
-// This is a conservative check that should work on most Unix systems
+// This is a conservative check that should work on most systems
 #if ARCH_X64
   // 64-bit: user space typically below 0x800000000000
   if (addr >= 0x800000000000ULL) {
@@ -148,68 +118,6 @@ bool is_valid_address_unix(uintptr_t addr) {
 
   return true;
 }
-
-#endif  // IS_UNIX
-
-#if IS_WINDOWS
-void format_address_safe_win64(DWORD64 addr,
-                               char* buffer,
-                               std::size_t buffer_size) {
-  if (!buffer || buffer_size < 3) {
-    if (buffer && buffer_size > 0) {
-      buffer[0] = '\0';
-    }
-    return;
-  }
-
-  constexpr char hex_chars[] = "0123456789abcdef";
-  constexpr int addr_width = 16;  // 64-bit address width
-
-  if (buffer_size < addr_width + 3) {  // "0x" + address + '\0'
-    buffer[0] = '\0';
-    return;
-  }
-
-  buffer[0] = '0';
-  buffer[1] = 'x';
-
-  // Convert address to hex string manually
-  for (int i = addr_width - 1; i >= 0; --i) {
-    buffer[2 + (addr_width - 1 - i)] = hex_chars[(addr >> (i * 4)) & 0xf];
-  }
-  buffer[addr_width + 2] = '\0';
-}
-
-// Validate address range for Windows
-bool is_valid_address_win(DWORD64 addr) {
-  // Skip NULL addresses and very low addresses (likely invalid)
-  if (addr == 0 || addr < 0x10000) {
-    return false;
-  }
-
-  // Basic sanity check for 64-bit Windows user space
-  // User space is typically below 0x800000000000
-  if (addr >= 0x800000000000ULL) {
-    return false;
-  }
-
-  return true;
-}
-
-struct WindowsStackTraceHancler {
-  WindowsStackTraceHancler() {
-    DWORD sym_options = SymGetOptions();
-    sym_options |= SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME | SYMOPT_LOAD_LINES;
-    sym_options |= SYMOPT_FAIL_CRITICAL_ERRORS;  // Don't show error dialogs
-    sym_options &= ~SYMOPT_NO_PROMPTS;           // Disable prompts
-    SymSetOptions(sym_options);
-    SymInitialize(GetCurrentProcess(), get_exe_dir().c_str(), TRUE);
-  }
-
-  ~WindowsStackTraceHancler() { SymCleanup(GetCurrentProcess()); }
-};
-
-#endif  // IS_WINDOWS
 
 }  // namespace
 
@@ -263,7 +171,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     }
 
     // Validate address before processing
-    if (!is_valid_address_unix(static_cast<uintptr_t>(instruction_pointer))) {
+    if (!is_valid_address(static_cast<uintptr_t>(instruction_pointer))) {
       ++frame_index;
       continue;
     }
@@ -346,7 +254,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
   for (std::size_t i = first_frame; i < static_cast<std::size_t>(frames); i++) {
     uintptr_t current_address = reinterpret_cast<uintptr_t>(stack[i]);
 
-    if (!is_valid_address_unix(current_address)) {
+    if (!is_valid_address(current_address)) {
       continue;
     }
 
@@ -366,7 +274,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     Dl_info info;
     std::memset(&info, 0, sizeof(info));
 
-    if (dladdr(reinterpret_cast<const void*>(current_address), &info)) {
+    if (dladdr(std::bit_cast<const void*>(current_address), &info)) {
       if (info.dli_sname) {
         char* symbol_cursor = symbol_buf;
         write_raw(symbol_cursor, info.dli_sname, sizeof(symbol_buf));
@@ -424,11 +332,11 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     DWORD64 address = reinterpret_cast<DWORD64>(stack[i + first_frame]);
 
     // Skip invalid addresses
-    if (!is_valid_address_win(address)) {
+    if (!is_valid_address(address)) {
       continue;
     }
 
-    format_address_safe_win64(address, address_buf, sizeof(address_buf));
+    format_address_safe(address, address_buf, sizeof(address_buf));
     const char* addr_str = address_buf;
 
     const char* function = "";
@@ -465,7 +373,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
 std::string stack_trace_from_current_context(bool use_index,
                                              std::size_t first_frame,
                                              std::size_t max_frames) {
-  constexpr std::size_t kBufSize = 4096;
+  constexpr const std::size_t kBufSize = 4096;
   char buf[kBufSize];
   stack_trace_from_current_context(buf, kBufSize, use_index, first_frame + 1,
                                    max_frames);
@@ -483,9 +391,26 @@ void stack_trace_from_current_context(char* buffer,
   stack_trace_entries_to_buffer(entries, count, buffer, buffer_size);
 }
 
+#if IS_WINDOWS
+
+struct WindowsStackTraceHandler {
+  WindowsStackTraceHandler() {
+    DWORD sym_options = SymGetOptions();
+    sym_options |= SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME | SYMOPT_LOAD_LINES;
+    sym_options |= SYMOPT_FAIL_CRITICAL_ERRORS;  // Don't show error dialogs
+    sym_options &= ~SYMOPT_NO_PROMPTS;           // Disable prompts
+    SymSetOptions(sym_options);
+    SymInitialize(GetCurrentProcess(), get_exe_dir().c_str(), TRUE);
+  }
+
+  ~WindowsStackTraceHandler() { SymCleanup(GetCurrentProcess()); }
+};
+
+#endif  // IS_WINDOWS
+
 void register_stack_trace_handler() {
 #if IS_WINDOWS
-  static const WindowsStackTraceHancler handler;
+  static const WindowsStackTraceHandler handler;
 #endif
 }
 

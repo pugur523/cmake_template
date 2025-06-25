@@ -74,20 +74,23 @@ def build_with_all_option_combinations(
     fail_fast,
 ):
     options = {
-        "-DENABLE_LLVM_UNWIND": ["false", "true"],
-        "-DENABLE_XRAY": ["false", "true"],
+        "-DENABLE_AVX2": ["false", "true"],
         "-DENABLE_SANITIZERS": ["false", "true"],
-        "-DENABLE_LTO": ["false", "true"],
-        "-DBUILD_CORE_SHARED": ["false", "true"],
+        "-DENABLE_LLVM_UNWIND": ["false", "true"],
     }
 
     common_args = [
         "-DBUILD_SHARED=true",
         "-DBUILD_TESTING=true",
+        "-DBUILD_BENCHMARK=true",
         "-DINSTALL_TESTING=false",
-        "-DENABLE_RUN_APP_POST_BUILD=false",
+        "-DINSTALL_BENCHMARK=false",
+        "-DENABLE_RUN_PROGRAM_POST_BUILD=false",
         "-DENABLE_RUN_TESTS_POST_BUILD=false",
+        "-DENABLE_RUN_BENCHMARKS_POST_BUILD=false",
         "-DWARNINGS_AS_ERRORS=true",
+        "-DENABLE_LTO=true",
+        "-DENABLE_XRAY=false",
         "-DENABLE_NATIVE_ARCH=true",
         "-DENABLE_BUILD_REPORT=false",
         "-DENABLE_COVERAGE=false",
@@ -103,23 +106,27 @@ def build_with_all_option_combinations(
 
     def is_valid_combination(platform, build_type, opt_combo):
         opt_dict = dict(zip(option_keys, opt_combo))
-        if (
-            opt_dict["-DENABLE_XRAY"] == "true"
-            and opt_dict["-DENABLE_SANITIZERS"] == "true"
-        ):
+        if platform == "windows" and opt_dict["-DENABLE_LLVM_UNWIND"] == "true":
             return False
-        if platform == "windows" and (
-            opt_dict["-DENABLE_XRAY"] == "true"
-            or opt_dict["-DENABLE_LLVM_UNWIND"] == "true"
-        ):
+        if build_type == "release" and opt_dict["-DENABLE_SANITIZERS"] == "true":
             return False
-        if build_type == "debug" and opt_dict["-DENABLE_LTO"] == "true":
-            return False
-        if build_type == "release" and (
-            opt_dict["-DENABLE_SANITIZERS"] == "true"
-            or opt_dict["-DENABLE_XRAY"] == "true"
-        ):
-            return False
+        # if (
+        #     opt_dict["-DENABLE_XRAY"] == "true"
+        #     and opt_dict["-DENABLE_SANITIZERS"] == "true"
+        # ):
+        #     return False
+        # if platform == "windows" and (
+        #     opt_dict["-DENABLE_XRAY"] == "true"
+        #     or opt_dict["-DENABLE_LLVM_UNWIND"] == "true"
+        # ):
+        #     return False
+        # if build_type == "debug" and opt_dict["-DENABLE_LTO"] == "true":
+        #     return False
+        # if build_type == "release" and (
+        #     opt_dict["-DENABLE_SANITIZERS"] == "true"
+        #     or opt_dict["-DENABLE_XRAY"] == "true"
+        # ):
+        #     return False
         return True
 
     all_combinations = [
@@ -525,4 +532,7 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    try:
+        sys.exit(main(sys.argv))
+    except KeyboardInterrupt:
+        print("\nAborted building process.")

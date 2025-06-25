@@ -1,137 +1,258 @@
-#include <fstream>
+#include <random>
 #include <string>
 #include <vector>
 
 #include "benchmark/benchmark.h"
 #include "core/base/file_util.h"
 
+namespace core {
+
 namespace {
 
 // Setup temporary test files/directories
 template <typename F>
 void with_temp_file(const std::string& content, const F& fn) {
-  const std::string tmp_path = "./tmp_test_file.txt";
-  std::ofstream ofs(tmp_path);
-  ofs << content;
-  ofs.close();
-
-  fn(tmp_path);
-
-  core::remove_file(tmp_path.c_str());
+  TempFile tmp("temp_file_for_bench", content);
+  fn(tmp.path());
 }
 
 template <typename F>
 void with_temp_dir(const F& fn) {
-  const std::string tmp_dir = "./tmp_test_dir";
-  core::create_directory(tmp_dir.c_str());
-  fn(tmp_dir);
-  core::remove_directory(tmp_dir.c_str());
+  TempDir tmp;
+  fn(tmp.path());
 }
 
-static void file_util_file_exists(benchmark::State& state) {
+void file_util_file_exists(benchmark::State& state) {
   with_temp_file("hello", [&](const std::string& path) {
     for (auto _ : state) {
-      benchmark::DoNotOptimize(core::file_exists(path.c_str()));
+      benchmark::DoNotOptimize(file_exists(path.c_str()));
     }
   });
 }
 BENCHMARK(file_util_file_exists);
 
-static void file_util_dir_exists(benchmark::State& state) {
+void file_util_dir_exists(benchmark::State& state) {
   with_temp_dir([&](const std::string& path) {
     for (auto _ : state) {
-      benchmark::DoNotOptimize(core::dir_exists(path.c_str()));
+      benchmark::DoNotOptimize(dir_exists(path.c_str()));
     }
   });
 }
 BENCHMARK(file_util_dir_exists);
 
-static void file_util_get_exe_path(benchmark::State& state) {
+void file_util_get_exe_path(benchmark::State& state) {
   for (auto _ : state) {
-    std::string exe_path = core::get_exe_path();
+    std::string exe_path = get_exe_path();
     benchmark::DoNotOptimize(exe_path);
   }
 }
 BENCHMARK(file_util_get_exe_path);
 
-static void file_util_get_exe_dir(benchmark::State& state) {
+void file_util_get_exe_dir(benchmark::State& state) {
   for (auto _ : state) {
-    std::string exe_dir = core::get_exe_dir();
+    std::string exe_dir = get_exe_dir();
     benchmark::DoNotOptimize(exe_dir);
   }
 }
 BENCHMARK(file_util_get_exe_dir);
 
-static void file_util_list_files(benchmark::State& state) {
+void file_util_list_files(benchmark::State& state) {
   with_temp_dir([&](const std::string& dir) {
     for (int i = 0; i < 10; ++i) {
-      std::ofstream(dir + "/file" + std::to_string(i)) << "test";
+      const std::string path =
+          join_path(dir, std::string("file" + std::to_string(i)));
+      create_file(path.c_str());
+      write_file(path.c_str(), "test");
     }
     for (auto _ : state) {
-      benchmark::DoNotOptimize(core::list_files(dir));
+      benchmark::DoNotOptimize(list_files(dir));
     }
 
     for (int i = 0; i < 10; ++i) {
-      std::string file = dir + "/file" + std::to_string(i);
-      core::remove_file(file.c_str());
+      const std::string path =
+          join_path(dir, std::string("file" + std::to_string(i)));
+      remove_file(path.c_str());
     }
   });
 }
 BENCHMARK(file_util_list_files);
 
-static void file_util_write_binary_to_file(benchmark::State& state) {
-  const std::string path = "/dev/null";
-  std::vector<char> data(4096, 'A');
-  for (auto _ : state) {
-    core::write_binary_to_file(data.data(), data.size(), path);
-  }
-  std::remove(path.c_str());
+void file_util_write_binary_to_file(benchmark::State& state) {
+  with_temp_file("", [&](const std::string& path) {
+    std::vector<char> data(4096, 'A');
+    for (auto _ : state) {
+      write_binary_to_file(data.data(), data.size(), path);
+    }
+  });
 }
 BENCHMARK(file_util_write_binary_to_file);
 
-static void file_util_file_extension(benchmark::State& state) {
+void file_util_file_extension(benchmark::State& state) {
   const std::string path = "/path/to/file.name.ext";
   for (auto _ : state) {
-    benchmark::DoNotOptimize(core::file_extension(path));
+    benchmark::DoNotOptimize(file_extension(path));
   }
 }
 BENCHMARK(file_util_file_extension);
 
-static void file_util_sanitize_component(benchmark::State& state) {
-  const std::string path = "/foo/bar/";
+void file_util_sanitize_component(benchmark::State& state) {
+  const char* path = "/foo/bar/";
   for (auto _ : state) {
-    benchmark::DoNotOptimize(core::sanitize_component(path, false));
+    benchmark::DoNotOptimize(sanitize_component(path, false));
   }
 }
 BENCHMARK(file_util_sanitize_component);
 
-static void file_util_remove_file(benchmark::State& state) {
+void file_util_remove_file(benchmark::State& state) {
+  const std::string tmp = temp_path("temp_bench_remove_file");
   for (auto _ : state) {
-    const std::string tmp = "./tmp_to_remove.txt";
-    std::ofstream(tmp) << "delete me";
-    benchmark::DoNotOptimize(core::remove_file(tmp.c_str()));
+    create_file(tmp.c_str());
+    write_file(tmp.c_str(), "test");
+    benchmark::DoNotOptimize(remove_file(tmp.c_str()));
   }
 }
 BENCHMARK(file_util_remove_file);
 
-static void file_util_rename_file(benchmark::State& state) {
+void file_util_rename_file(benchmark::State& state) {
+  const std::string temp_dir = temp_directory();
+  const std::string new_name = join_path(temp_dir, "tmp_new_name.txt");
   for (auto _ : state) {
-    const std::string old_name = "./tmp_old_name.txt";
-    const std::string new_name = "./tmp_new_name.txt";
-    std::ofstream(old_name) << "rename me";
-    core::rename_file(old_name.c_str(), new_name.c_str());
-    core::remove_file(new_name.c_str());
+    const std::string old_name = temp_path("temp_bench_rename_file");
+    create_file(old_name.c_str());
+    write_file(old_name.c_str(), "test");
+    rename_file(old_name.c_str(), new_name.c_str());
+    remove_file(new_name.c_str());
   }
 }
 BENCHMARK(file_util_rename_file);
 
-static void file_util_create_directory(benchmark::State& state) {
-  for (auto _ : state) {
-    const std::string dir = "./tmp_bench_dir";
-    core::create_directory(dir.c_str());
-    core::remove_directory(dir.c_str());
-  }
+void file_util_create_directory(benchmark::State& state) {
+  with_temp_dir([&](const std::string& temp_dir) {
+    const std::string dir = join_path(temp_dir, "temp_bench_create_directory");
+    for (auto _ : state) {
+      create_directory(dir.c_str());
+      remove_directory(dir.c_str());
+    }
+  });
 }
 BENCHMARK(file_util_create_directory);
 
+std::string generate_large_content(size_t num_lines, size_t line_length) {
+  std::string content;
+  content.reserve(num_lines * (line_length + 1));  // +1 for newline
+  for (size_t i = 0; i < num_lines; ++i) {
+    for (size_t j = 0; j < line_length; ++j) {
+      content += 'a' + (j % 26);  // a-z
+    }
+    content += '\n';
+  }
+  return content;
+}
+
+template <bool use_avx>
+void file_util_read_lines_internal(benchmark::State& state) {
+  const size_t num_lines = 1000;
+  const size_t line_length = 80;
+  const std::string large_content =
+      generate_large_content(num_lines, line_length);
+
+  for (auto _ : state) {
+    std::vector<std::string> lines = read_lines<use_avx>(large_content);
+    benchmark::DoNotOptimize(lines);
+  }
+  state.SetBytesProcessed(state.iterations() * large_content.size());
+}
+
+void file_util_read_lines_default(benchmark::State& state) {
+  file_util_read_lines_internal<false>(state);
+}
+BENCHMARK(file_util_read_lines_default);
+
+void file_util_read_lines_with_avx2(benchmark::State& state) {
+  file_util_read_lines_internal<true>(state);
+}
+BENCHMARK(file_util_read_lines_with_avx2);
+
+void file_util_file_constructor(benchmark::State& state) {
+  const size_t num_lines = 1000;
+  const size_t line_length = 80;
+  const std::string file_name = "test_file.txt";
+  const std::string large_content =
+      generate_large_content(num_lines, line_length);
+
+  for (auto _ : state) {
+    File f = File(std::string(file_name), std::string(large_content));
+    benchmark::DoNotOptimize(f);
+  }
+  state.SetBytesProcessed(state.iterations() *
+                          (file_name.size() + large_content.size()));
+}
+BENCHMARK(file_util_file_constructor);
+
+void file_util_file_line_access_random(benchmark::State& state) {
+  const size_t num_lines = 1000;
+  const size_t line_length = 80;
+  const std::string large_content =
+      generate_large_content(num_lines, line_length);
+  File f("test_file.txt", std::string(large_content));
+
+  std::mt19937 gen(std::random_device{}());  // NOLINT
+  std::uniform_int_distribution<> distrib(1, num_lines);
+
+  for (auto _ : state) {
+    size_t line_no = distrib(gen);
+    f.line(line_no);
+  }
+  state.SetBytesProcessed(state.iterations() * line_length);
+}
+BENCHMARK(file_util_file_line_access_random);
+
+void file_util_file_line_access_sequential(benchmark::State& state) {
+  const size_t num_lines = 1000;
+  const size_t line_length = 80;
+  const std::string large_content =
+      generate_large_content(num_lines, line_length);
+  File f("test_file.txt", std::string(large_content));
+
+  size_t current_line = 1;
+
+  for (auto _ : state) {
+    f.line(current_line);
+
+    current_line++;
+    if (current_line > num_lines) {
+      current_line = 1;
+    }
+  }
+  state.SetBytesProcessed(state.iterations() * line_length);
+}
+BENCHMARK(file_util_file_line_access_sequential);
+
+void file_util_file_source_access(benchmark::State& state) {
+  const size_t num_lines = 1000;
+  const size_t line_length = 80;
+  const std::string large_content =
+      generate_large_content(num_lines, line_length);
+  File f("test_file.txt", std::string(large_content));
+
+  for (auto _ : state) {
+    f.source();
+  }
+  state.SetBytesProcessed(state.iterations() * large_content.size());
+}
+BENCHMARK(file_util_file_source_access);
+
+void file_util_file_name_access(benchmark::State& state) {
+  const std::string file_name = "test_file.txt";
+  File f(std::string(file_name), "");
+
+  for (auto _ : state) {
+    f.file_name();
+  }
+  state.SetBytesProcessed(state.iterations() * file_name.size());
+}
+BENCHMARK(file_util_file_name_access);
+
 }  // namespace
+
+}  // namespace core

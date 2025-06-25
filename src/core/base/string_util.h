@@ -63,6 +63,10 @@ CORE_EXPORT void to_upper(std::string* input);
 [[nodiscard]] CORE_EXPORT std::string remove_bracket(const std::string& input);
 [[nodiscard]] CORE_EXPORT std::size_t safe_strlen(const char* str);
 
+CORE_EXPORT void format_address_safe(uintptr_t addr,
+                                     char* buffer_start,
+                                     std::size_t buffer_size);
+
 CORE_EXPORT void padding(char*& cursor,
                          const char* const end,
                          std::size_t current_len,
@@ -73,10 +77,10 @@ CORE_EXPORT std::size_t write_raw(char*& dest,
                                   std::size_t len);
 
 template <typename... Args>
-std::size_t write_format(char*& cursor,
-                         const char* const end,
-                         std::format_string<Args...> fmt,
-                         Args&&... args) {
+constexpr std::size_t write_format(char*& cursor,
+                                   const char* const end,
+                                   std::format_string<Args...> fmt,
+                                   Args&&... args) {
   std::ptrdiff_t remaining = end - cursor;
   if (remaining <= 0) {
     return 0;

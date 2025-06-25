@@ -36,14 +36,17 @@ else()
 endif()
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} lower_build_type)
-option(BUILD_PROGRAM "build standalone executable" TRUE)
-option(INSTALL_PROGRAM "install standalone executable" TRUE)
-option(INSTALL_LIBS "install libraries" TRUE)
 option(BUILD_SHARED "build libraries as shared" TRUE)
+option(BUILD_PROGRAM "build standalone executable" TRUE)
 option(BUILD_BENCHMARK "build benchmark module" TRUE)
 option(BUILD_TESTING "build testing module" TRUE)
+option(INSTALL_PROGRAM "install standalone executable" TRUE)
+option(INSTALL_LIBS "install libraries" TRUE)
 option(INSTALL_BENCHMARK "install benchmark module" FALSE)
 option(INSTALL_TESTING "install testing module" FALSE)
+option(ENABLE_RUN_PROGRAM_POST_BUILD "enable running program post build" FALSE)
+option(ENABLE_RUN_BENCHMARKS_POST_BUILD "enable running benchmarks post build" FALSE)
+option(ENABLE_RUN_TESTS_POST_BUILD "enable running tests post build" TRUE)
 
 string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} lower_arch)
 string(TOLOWER ${CMAKE_SYSTEM_NAME} lower_os_name)
@@ -64,9 +67,7 @@ option(ENABLE_OPTIMIZATION_REPORT "generate optimization report" TRUE)
 option(ENABLE_XRAY "enable llvm-xray. not compatible with windows build, debug build, address sanitizers. runs main app and test on post build if available." TRUE)
 option(ENABLE_SANITIZERS "enable address and undefined sanitizers" TRUE)
 option(ENABLE_LLVM_UNWIND "enable llvm libunwind to fetch stacktrace" TRUE)
-
-option(ENABLE_RUN_APP_POST_BUILD "enable running app post build" FALSE)
-option(ENABLE_RUN_TESTS_POST_BUILD "enable running tests post build" TRUE)
+option(ENABLE_AVX2 "enable avx2 if available" TRUE)
 
 option(WARNINGS_AS_ERRORS "treat warnings as errors" TRUE)
 
@@ -198,14 +199,17 @@ build resources dir: ${BUILD_RESOURCES_DIR}
 is mingw build: ${MINGW_BUILD}
 toolchain file: ${CMAKE_TOOLCHAIN_FILE}
 build debug: ${BUILD_DEBUG}
-build program: ${BUILD_PROGRAM}
-install program: ${INSTALL_PROGRAM}
-install libs: ${INSTALL_LIBS}
 build shared: ${BUILD_SHARED}
+build program: ${BUILD_PROGRAM}
 build benchmark: ${BUILD_BENCHMARK}
 build testing: ${BUILD_TESTING}
+install program: ${INSTALL_PROGRAM}
+install libs: ${INSTALL_LIBS}
 install benchmark: ${INSTALL_BENCHMARK}
 install testing: ${INSTALL_TESTING}
+enable run program post build: ${ENABLE_RUN_PROGRAM_POST_BUILD}
+enable run benchmarks post build: ${ENABLE_RUN_BENCHMARKS_POST_BUILD}
+enable run tests post build: ${ENABLE_RUN_TESTS_POST_BUILD}
 enable verbose: ${ENABLE_VERBOSE}
 enable lto: ${ENABLE_LTO}
 enable native arch: ${ENABLE_NATIVE_ARCH}
@@ -215,8 +219,7 @@ enable optimization report: ${ENABLE_OPTIMIZATION_REPORT}
 enable xray: ${ENABLE_XRAY}
 enable sanitizers: ${ENABLE_SANITIZERS}
 enable llvm unwind: ${ENABLE_LLVM_UNWIND}
-enable run app post build: ${ENABLE_RUN_APP_POST_BUILD}
-enable run tests post build: ${ENABLE_RUN_TESTS_POST_BUILD}
+enable avx2: ${ENABLE_AVX2}
 warnings as errors: ${WARNINGS_AS_ERRORS}
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-${ColourReset}")
   print_all_build_flags()

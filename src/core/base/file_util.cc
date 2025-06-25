@@ -2,6 +2,9 @@
 
 #include <limits.h>
 
+#include <utility>
+
+#include "build/build_config.h"
 #include "build/build_flag.h"
 
 #if IS_WINDOWS
@@ -12,19 +15,21 @@
 #else
 #include <dirent.h>
 #include <errno.h>
+#include <sys/types.h>
 #include <unistd.h>
-
-#include <cstring>
 #endif
 
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include <cerrno>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -64,12 +69,14 @@ std::string read_file(const char* path) {
     return "";
   }
 
-  struct stat st;
 #if IS_WINDOWS
-  if (_fstat(fd, &st) != 0) {
+  struct _stat64i32 st;
+  if (_fstat(fd, &st) != 0)
 #else
-  if (fstat(fd, &st) != 0) {
+  struct stat st;
+  if (fstat(fd, &st) != 0)
 #endif
+  {
     std::cerr << "Failed to stat file: " << path << " (" << std::strerror(errno)
               << ")\n";
 #if IS_WINDOWS
@@ -265,7 +272,7 @@ int create_directory(const char* path) {
 #endif
 }
 
-int create_directories(const std::string& path) {
+int create_directories(const char* path) {
   std::string sanitized_path = sanitize_component(path, true);
   std::size_t pos = 0;
   int result = 0;
@@ -283,6 +290,23 @@ int create_directories(const std::string& path) {
   return result;
 }
 
+int create_file(const char* path) {
+#if IS_WINDOWS
+  FILE* fp = nullptr;
+  fopen_s(&fp, path, "wx");  // "w"=write, "x"=fail if exists
+  if (!fp) {
+    return -1;
+  }
+#else
+  FILE* fp = fopen(path, "wx");  // POSIX: 'x' = exclusive (fail if exists)
+  if (!fp) {
+    return -1;
+  }
+#endif
+  fclose(fp);
+  return 0;
+}
+
 int remove_file(const char* path) {
 #if IS_WINDOWS
   return DeleteFileA(path) ? 0 : -1;
@@ -295,7 +319,7 @@ int remove_directory(const char* path) {
 #if IS_WINDOWS
   return RemoveDirectoryA(path) ? 0 : -1;
 #else
-  return ::rmdir(path);
+  return rmdir(path);
 #endif
 }
 
@@ -305,6 +329,97 @@ int rename_file(const char* old_path, const char* new_path) {
 #else
   return std::rename(old_path, new_path);
 #endif
+}
+
+std::string temp_directory() {
+#if IS_WINDOWS
+  char buffer[MAX_PATH];
+  DWORD len = GetTempPathA(MAX_PATH, buffer);
+  if (len == 0 || len > MAX_PATH) {
+    return ".\\";
+  }
+  return std::string(buffer);
+#else
+  const char* env_vars[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
+  for (const char* var : env_vars) {
+    const char* value = std::getenv(var);
+    if (value && *value) {
+      return std::string(value) + DIR_SEPARATOR;
+    }
+  }
+  return "/tmp/";
+#endif
+}
+
+std::string temp_path(const std::string& prefix) {
+  std::string dir = temp_directory();
+
+  static constexpr char charset[] =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
+  constexpr size_t length = 8;
+
+  std::mt19937 rng(static_cast<unsigned>(
+      std::chrono::steady_clock::now().time_since_epoch().count()));
+  std::uniform_int_distribution<> dist(0, sizeof(charset) - 2);
+
+  std::string suffix = PROJECT_NAME "_";
+  for (size_t i = 0; i < length; ++i) {
+    suffix += charset[dist(rng)];
+  }
+
+#if IS_WINDOWS
+  return dir + prefix + suffix + ".tmp";
+#else
+  return dir + prefix + suffix;
+#endif
+}
+
+int write_file(const char* path, const std::string& content) {
+#if IS_WINDOWS
+  int fd = _open(path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY,
+                 _S_IREAD | _S_IWRITE);
+#else
+  int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+#endif
+
+  if (fd < 0) {
+    std::cerr << "Failed to open file for writing: " << path << " ("
+              << std::strerror(errno) << ")\n";
+    return -1;
+  }
+
+  size_t total_written = 0;
+  const char* data = content.data();
+  size_t size = content.size();
+
+  while (total_written < size) {
+#if IS_WINDOWS
+    int bytes = _write(fd, data + total_written,
+                       static_cast<unsigned int>(size - total_written));
+#else
+    ssize_t bytes = write(fd, data + total_written, size - total_written);
+#endif
+    if (bytes <= 0) {
+      std::cerr << "Failed to write to file: " << path << " ("
+                << std::strerror(errno) << ")\n";
+#if IS_WINDOWS
+      _close(fd);
+#else
+      close(fd);
+#endif
+      return -1;
+    }
+    total_written += static_cast<size_t>(bytes);
+  }
+
+#if IS_WINDOWS
+  _close(fd);
+#else
+  close(fd);
+#endif
+  return 0;
 }
 
 int write_binary_to_file(const void* binary_data,
@@ -354,7 +469,7 @@ std::string file_extension(const std::string& path) {
   return path.substr(last_dot + 1);
 }
 
-std::string sanitize_component(const std::string& part, bool is_first) {
+std::string sanitize_component(const char* part, bool is_first) {
   std::string result = part;
 
   // Remove leading separator if not first
@@ -369,5 +484,155 @@ std::string sanitize_component(const std::string& part, bool is_first) {
 
   return result;
 }
+
+std::vector<std::string> read_lines_default(const std::string& content) {
+  std::vector<std::string> lines;
+
+  if (content.empty()) {
+    return lines;
+  }
+
+  size_t estimated_lines = std::count(content.begin(), content.end(), '\n') + 1;
+  lines.reserve(estimated_lines);
+
+  const char* current_pos = content.data();
+  const char* end_pos = current_pos + content.size();
+
+  while (current_pos < end_pos) {
+    const char* next_newline = static_cast<const char*>(
+        memchr(current_pos, '\n', end_pos - current_pos));
+
+    const char* line_end = next_newline ? next_newline : end_pos;
+    size_t line_length = line_end - current_pos;
+
+    // CRLF
+    if (line_length > 0 && line_end[-1] == '\r') {
+      --line_length;
+    }
+
+    lines.emplace_back(current_pos, line_length);
+    current_pos = next_newline ? next_newline + 1 : end_pos;
+  }
+
+  return lines;
+}
+
+#if ENABLE_AVX2
+
+std::vector<std::string> read_lines_with_avx2(const std::string& content) {
+  std::vector<std::string> lines;
+
+  if (content.empty()) {
+    return lines;
+  }
+
+  // predicts as 80 chars per line.
+  std::vector<size_t> newline_positions;
+  newline_positions.reserve(content.size() / 80);
+
+  const char* data = content.data();
+  size_t size = content.size();
+  size_t pos = 0;
+
+  // search line breaks with AVX2 (processes 32 bytes at a time)
+  if (size >= 32) {
+    const __m256i newline_vec = _mm256_set1_epi8('\n');
+
+    for (; pos + 32 <= size; pos += 32) {
+      __m256i chunk =
+          _mm256_loadu_si256(reinterpret_cast<const __m256i*>(data + pos));
+      __m256i cmp = _mm256_cmpeq_epi8(chunk, newline_vec);
+      uint32_t mask = _mm256_movemask_epi8(cmp);
+
+      while (mask) {
+        int offset = __builtin_ctz(mask);
+        newline_positions.push_back(pos + offset);
+        mask &= mask - 1;
+      }
+    }
+  }
+
+  // scalar processing for remaining
+  for (; pos < size; ++pos) {
+    if (data[pos] == '\n') {
+      newline_positions.push_back(pos);
+    }
+  }
+
+  lines.reserve(newline_positions.size() + 1);
+
+  size_t line_start = 0;
+  for (size_t newline_pos : newline_positions) {
+    size_t line_length = newline_pos - line_start;
+
+    // CRLF
+    if (line_length > 0 && data[line_start + line_length - 1] == '\r') {
+      --line_length;
+    }
+
+    lines.emplace_back(data + line_start, line_length);
+    line_start = newline_pos + 1;
+  }
+
+  // last line
+  if (line_start < size) {
+    size_t line_length = size - line_start;
+    if (line_length > 0 && data[line_start + line_length - 1] == '\r') {
+      --line_length;
+    }
+    lines.emplace_back(data + line_start, line_length);
+  }
+
+  return lines;
+}
+
+#endif  // ENABLE_AVX2
+
+TempFile::TempFile(const std::string& prefix, const std::string& content) {
+  path_ = temp_path(prefix);
+  if (create_file(path_.c_str()) != 0) {
+    std::cerr << "Failed to create temp file: " << path_ << "\n";
+    valid_ = false;
+    return;
+  }
+  if (!content.empty()) {
+    if (write_file(path_.c_str(), content) != 0) {
+      std::cerr << "Failed to write to temp file: " << path_ << "\n";
+      valid_ = false;
+    }
+  }
+}
+
+TempFile::~TempFile() {
+  if (valid_) {
+    if (remove_file(path_.c_str()) != 0) {
+      std::cerr << "Failed to remove temp file: " << path_ << "\n";
+    }
+  }
+}
+
+TempDir::TempDir(const std::string& prefix) {
+  path_ = temp_path(prefix);
+  if (create_directory(path_.c_str()) != 0) {
+    std::cerr << "Failed to create temp directory: " << path_ << "\n";
+    valid_ = false;
+  }
+}
+
+TempDir::~TempDir() {
+  if (valid_) {
+    if (remove_directory(path_.c_str()) != 0) {
+      std::cerr << "Failed to remove temp directory: " << path_ << "\n";
+    }
+  }
+}
+
+File::File(std::string&& file_name, std::string&& source)
+    : file_name_(std::move(file_name)),
+      source_(std::move(source)),
+      lines_(read_lines<true>(source_)) {}
+
+File::File(std::string&& file_name)
+    : File(std::move(file_name), read_file(file_name.c_str())) {}
 
 }  // namespace core

@@ -10,13 +10,10 @@
 
 namespace core {
 
-template <typename T, std::size_t Dim>
+template <typename T, std::size_t kDimNumber>
 class Vec {
-  static_assert(std::is_arithmetic_v<T>, "Vec only supports arithmetic types.");
-
  public:
-  using value_type = T;
-  static constexpr std::size_t dimension = Dim;
+  static_assert(std::is_arithmetic_v<T>, "Vec only supports arithmetic types.");
 
   // Constructors
   constexpr Vec() : data_() {}
@@ -24,34 +21,34 @@ class Vec {
   constexpr Vec(std::initializer_list<T> list) : data_{} {
     std::size_t i = 0;
     for (T v : list) {
-      if (i < Dim) {
+      if (i < kDimNumber) {
         data_[i++] = v;
       }
     }
   }
 
-  Vec(const Vec&) = default;
-  Vec& operator=(const Vec&) = default;
+  inline constexpr Vec(const Vec&) = default;
+  inline constexpr Vec& operator=(const Vec&) = default;
 
-  Vec(Vec&&) noexcept = default;
-  Vec& operator=(Vec&&) noexcept = default;
+  inline constexpr Vec(Vec&&) noexcept = default;
+  inline constexpr Vec& operator=(Vec&&) noexcept = default;
 
-  static constexpr Vec from_array(const std::array<T, Dim>& arr) {
+  static inline constexpr Vec from_array(const std::array<T, kDimNumber>& arr) {
     Vec v;
     v.data_ = arr;
     return v;
   }
 
-  constexpr std::array<T, Dim> to_array() const { return data_; }
+  inline constexpr std::array<T, kDimNumber> to_array() const { return data_; }
 
   // Element access
-  constexpr T& operator[](std::size_t i) { return data_[i]; }
-  constexpr const T& operator[](std::size_t i) const { return data_[i]; }
+  inline constexpr T& operator[](std::size_t i) { return data_[i]; }
+  inline constexpr const T& operator[](std::size_t i) const { return data_[i]; }
 
   // Arithmetic
   constexpr Vec operator+(const Vec& other) const {
     Vec result;
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       result[i] = data_[i] + other[i];
     }
     return result;
@@ -59,7 +56,7 @@ class Vec {
 
   constexpr Vec operator-(const Vec& other) const {
     Vec result;
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       result[i] = data_[i] - other[i];
     }
     return result;
@@ -67,7 +64,7 @@ class Vec {
 
   constexpr Vec operator*(T scalar) const {
     Vec result;
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       result[i] = data_[i] * scalar;
     }
     return result;
@@ -75,35 +72,35 @@ class Vec {
 
   constexpr Vec operator/(T scalar) const {
     Vec result;
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       result[i] = data_[i] / scalar;
     }
     return result;
   }
 
   constexpr Vec& operator+=(const Vec& other) {
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       data_[i] += other[i];
     }
     return *this;
   }
 
   constexpr Vec& operator-=(const Vec& other) {
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       data_[i] -= other[i];
     }
     return *this;
   }
 
   constexpr Vec& operator*=(T scalar) {
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       data_[i] *= scalar;
     }
     return *this;
   }
 
   constexpr Vec& operator/=(T scalar) {
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       data_[i] /= scalar;
     }
     return *this;
@@ -112,24 +109,26 @@ class Vec {
   // Dot product
   constexpr T dot(const Vec& other) const {
     T result = T{};
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       result += data_[i] * other[i];
     }
     return result;
   }
 
-  T length() const { return std::sqrt(dot(*this)); }
+  inline constexpr T length() const { return std::sqrt(dot(*this)); }
 
-  Vec normalized() const {
+  inline constexpr Vec normalized() const {
     T len = length();
     return len == T{} ? *this : *this / len;
   }
 
-  T distance(const Vec& other) const { return (*this - other).length(); }
+  inline constexpr T distance(const Vec& other) const {
+    return (*this - other).length();
+  }
 
   constexpr Vec clamp(const Vec& min, const Vec& max) const {
     Vec result;
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       result[i] = std::max(min[i], std::min(max[i], data_[i]));
     }
     return result;
@@ -145,8 +144,8 @@ class Vec {
   }
 
   // Cross product (3D only)
-  template <std::size_t D = Dim>
-  constexpr typename std::enable_if_t<D == 3, Vec> cross(
+  template <std::size_t D = kDimNumber>
+  inline constexpr typename std::enable_if_t<D == 3, Vec> cross(
       const Vec& other) const {
     return Vec{data_[1] * other[2] - data_[2] * other[1],
                data_[2] * other[0] - data_[0] * other[2],
@@ -154,17 +153,18 @@ class Vec {
   }
 
   // Comparison
-  constexpr bool operator==(const Vec& other) const {
+  inline constexpr bool operator==(const Vec& other) const {
     return data_ == other.data_;
   }
-  constexpr bool operator!=(const Vec& other) const {
+
+  inline constexpr bool operator!=(const Vec& other) const {
     return !(*this == other);
   }
 
   // Output
   friend std::ostream& operator<<(std::ostream& os, const Vec& v) {
     os << "[";
-    for (std::size_t i = 0; i < Dim; ++i) {
+    for (std::size_t i = 0; i < kDimNumber; ++i) {
       if (i > 0) {
         os << ", ";
       }
@@ -175,7 +175,7 @@ class Vec {
   }
 
  private:
-  std::array<T, Dim> data_;
+  std::array<T, kDimNumber> data_;
 };
 
 // Type aliases

@@ -22,13 +22,15 @@ set_target_properties(${TEST_NAME} PROPERTIES
   POSITION_INDEPENDENT_CODE TRUE
 )
 
-if(ENABLE_COVERAGE AND ENABLE_RUN_TESTS_POST_BUILD)
-  if(MINGW_BUILD)
-    set(EXE_COMMAND wine $<TARGET_FILE:${TEST_NAME}>)
-  else()
-    set(EXE_COMMAND $<TARGET_FILE:${TEST_NAME}>)
-  endif()
+set(NEED_RUN TRUE)
 
+if(MINGW_BUILD)
+  set(EXE_COMMAND wine $<TARGET_FILE:${TEST_NAME}>)
+else()
+  set(EXE_COMMAND $<TARGET_FILE:${TEST_NAME}>)
+endif()
+
+if(ENABLE_COVERAGE AND ENABLE_RUN_TESTS_POST_BUILD)
   set(COVERAGE_DIR "${CMAKE_BINARY_DIR}/coverage/${TEST_NAME}")
   FILE(MAKE_DIRECTORY ${COVERAGE_DIR})
   add_custom_command(TARGET ${TEST_NAME} POST_BUILD
@@ -42,6 +44,7 @@ if(ENABLE_COVERAGE AND ENABLE_RUN_TESTS_POST_BUILD)
 
     WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
   )
+  set(NEED_RUN FALSE)
 endif()
 
 if(ENABLE_XRAY AND ENABLE_RUN_TESTS_POST_BUILD)
@@ -59,6 +62,14 @@ if(ENABLE_XRAY AND ENABLE_RUN_TESTS_POST_BUILD)
     COMMAND llvm-xray account --instr_map=${EXE_PATH} --sort=count --top=50 --format=text --output=${XRAY_DIR}/xray-summary.txt ${XRAY_DIR}/xray-log.${TEST_NAME}.*
 
     WORKING_DIRECTORY ${XRAY_DIR}
+  )
+  set(NEED_RUN FALSE)
+endif()
+
+if(NEED_RUN AND ENABLE_RUN_TESTS_POST_BUILD)
+  add_custom_command(TARGET ${TEST_NAME} POST_BUILD
+    COMMENT "Run tests if it has never been executed."
+    COMMAND ${EXE_COMMAND}
   )
 endif()
 

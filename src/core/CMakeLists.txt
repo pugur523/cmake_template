@@ -6,7 +6,10 @@ message(STATUS "Configuring ${MODULE_NAME} module...")
 set(SOURCES
   check.cc
   location.cc
+  base/file_manager.cc
   base/file_util.cc
+  base/source_location.cc
+  base/source_range.cc
   base/string_util.cc
   cli/arg_parser.cc
   diagnostics/signal_handler.cc

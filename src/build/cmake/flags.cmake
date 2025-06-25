@@ -156,8 +156,7 @@ endmacro()
 macro(setup_common_flags)
   # Profiling with llvm-coverage
   if(ENABLE_COVERAGE)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
+    list(APPEND PROJECT_COMPILE_OPTIONS -fprofile-instr-generate -fcoverage-mapping)
   endif()
 
   # Profiling with llvm-xray
@@ -173,6 +172,33 @@ macro(setup_common_flags)
     add_compile_definitions(ENABLE_XRAY=1)
   else()
     add_compile_definitions(ENABLE_XRAY=0)
+  endif()
+
+  if(ENABLE_AVX2)
+    include(CheckCXXSourceRuns)
+
+    set(AVX2_TEST_CODE "
+      #include <immintrin.h>
+      int main() {
+          __m256i a = _mm256_set1_epi32(1);
+          __m256i b = _mm256_add_epi32(a, a);
+          return 0;
+      }
+    ")
+
+    set(CMAKE_REQUIRED_FLAGS "-mavx2")
+    check_cxx_source_runs("${AVX2_TEST_CODE}" HAS_AVX2)
+
+    if(HAS_AVX2)
+      message(STATUS "AVX2 support detected")
+      add_compile_definitions(ENABLE_AVX2=1)
+      list(APPEND PROJECT_COMPILE_OPTIONS -mavx2)
+    else()
+      add_compile_definitions(ENABLE_AVX2=0)
+      message(STATUS "AVX2 support not available")
+    endif()
+  else()
+    add_compile_definitions(ENABLE_AVX2=0)
   endif()
 endmacro()
 
