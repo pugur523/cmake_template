@@ -1,7 +1,7 @@
 #ifndef CORE_BASE_FILE_MANAGER_H_
 #define CORE_BASE_FILE_MANAGER_H_
 
-#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 

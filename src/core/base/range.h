@@ -1,9 +1,7 @@
 #ifndef CORE_BASE_RANGE_H_
 #define CORE_BASE_RANGE_H_
 
-#include <algorithm>
 #include <array>
-#include <utility>
 
 #include "core/check.h"
 
@@ -83,7 +81,7 @@ class Range {
     return ranges_[index].min();
   }
 
-  inline constexpr const T& max(std::size_t index) const {
+  inline constexpr const T& max(std::size_t index) const {  // NOLINT
     DCHECK_LT(index, kDimNumber);
     return ranges_[index].max();
   }

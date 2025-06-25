@@ -43,6 +43,11 @@ macro(setup_google_benchmark)
     set(HAVE_THREAD_SAFETY_ATTRIBUTES FALSE)
   endif()
 
+  # clang-cl's `/GL` option will compete with `/clang:-flto=thin`
+  if(HOST_OS_NAME MATCHES "windows" AND ENABLE_LTO)
+    set(BENCHMARK_ENABLE_LTO FALSE)
+  endif()
+
   add_subdirectory(${GOOGLE_BENCHMARK_DIR})
 
   set(GOOGLE_BENCHMARK_LIBRARIES benchmark::benchmark)

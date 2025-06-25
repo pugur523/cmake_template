@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
-#include <utility>
 
 #include "build/build_flag.h"
 #include "core/base/file_util.h"
@@ -249,7 +248,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
   char address_buf[kAddressStrLength];
   char demangled_buf[kDemangledBufferSize];
   char symbol_buf[kSymbolBufferSize];
-  std::size_t count = 0;
+  std::size_t collected_count = 0;
 
   for (std::size_t i = first_frame; i < static_cast<std::size_t>(frames); i++) {
     uintptr_t current_address = reinterpret_cast<uintptr_t>(stack[i]);
@@ -258,7 +257,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
       continue;
     }
 
-    StackTraceEntry& entry = out[count];
+    StackTraceEntry& entry = out[collected_count];
     entry.index = use_index ? (i - first_frame) : 0;
     entry.line = 0;
     entry.use_index = use_index;
@@ -271,22 +270,22 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     const char* file_name = "";
     std::size_t offset = 0;
 
-    Dl_info info;
-    std::memset(&info, 0, sizeof(info));
+    Dl_info dl_info;
+    std::memset(&dl_info, 0, sizeof(dl_info));
 
-    if (dladdr(std::bit_cast<const void*>(current_address), &info)) {
-      if (info.dli_sname) {
+    if (dladdr(std::bit_cast<const void*>(current_address), &dl_info)) {
+      if (dl_info.dli_sname) {
         char* symbol_cursor = symbol_buf;
-        write_raw(symbol_cursor, info.dli_sname, sizeof(symbol_buf));
+        write_raw(symbol_cursor, dl_info.dli_sname, sizeof(symbol_buf));
         function_name = demangle_symbol_safe(symbol_buf, demangled_buf,
                                              kDemangledBufferSize);
       }
-      if (info.dli_fname) {
-        file_name = info.dli_fname;
+      if (dl_info.dli_fname) {
+        file_name = dl_info.dli_fname;
       }
-      if (info.dli_saddr) {
+      if (dl_info.dli_saddr) {
         std::uintptr_t symbol_base =
-            reinterpret_cast<std::uintptr_t>(info.dli_saddr);
+            reinterpret_cast<std::uintptr_t>(dl_info.dli_saddr);
         if (current_address >= symbol_base) {
           offset = current_address - symbol_base;
         }
@@ -299,10 +298,10 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     write_raw(function_cursor, function_name, kFunctionStrLength);
     write_raw(file_cursor, file_name, kFileStrLength);
 
-    count++;
+    collected_count++;
   }
 
-  return count;
+  return collected_count;
 #elif IS_WINDOWS
   HANDLE process = GetCurrentProcess();
 
@@ -329,25 +328,25 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
   std::size_t count = 0;
 
   for (WORD i = 0; i < frames; i++) {
-    DWORD64 address = reinterpret_cast<DWORD64>(stack[i + first_frame]);
+    DWORD64 current_address = reinterpret_cast<DWORD64>(stack[i + first_frame]);
 
     // Skip invalid addresses
-    if (!is_valid_address(address)) {
+    if (!is_valid_address(current_address)) {
       continue;
     }
 
-    format_address_safe(address, address_buf, sizeof(address_buf));
+    format_address_safe(current_address, address_buf, sizeof(address_buf));
     const char* addr_str = address_buf;
 
     const char* function = "";
     const char* file = "";
     int line_number = 0;
 
-    if (SymFromAddr(process, address, nullptr, symbol)) {
+    if (SymFromAddr(process, current_address, nullptr, symbol)) {
       function = symbol->Name;
     }
 
-    if (SymGetLineFromAddr64(process, address, &displacement, &line)) {
+    if (SymGetLineFromAddr64(process, current_address, &displacement, &line)) {
       file = line.FileName;
       line_number = line.LineNumber;
     }
@@ -393,6 +392,8 @@ void stack_trace_from_current_context(char* buffer,
 
 #if IS_WINDOWS
 
+namespace {
+
 struct WindowsStackTraceHandler {
   WindowsStackTraceHandler() {
     DWORD sym_options = SymGetOptions();
@@ -405,6 +406,8 @@ struct WindowsStackTraceHandler {
 
   ~WindowsStackTraceHandler() { SymCleanup(GetCurrentProcess()); }
 };
+
+}  // namespace
 
 #endif  // IS_WINDOWS
 

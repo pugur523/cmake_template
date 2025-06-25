@@ -35,6 +35,8 @@ int WINAPI WinMain(HINSTANCE /* hInstance */,
   std::vector<std::string> args_utf8;
   std::vector<char*> argv_utf8;
 
+  args_utf8.reserve(argc_wide);
+  argv_utf8.reserve(argc_wide);
   for (int i = 0; i < argc_wide; ++i) {
     // UTF-16 (wchar_t*) → UTF-8 (char*)
     int required_size = WideCharToMultiByte(CP_UTF8, 0, argv_wide[i], -1,

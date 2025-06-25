@@ -94,7 +94,7 @@ jobs:
           sudo apt-get install -y libunwind-${{ matrix.llvm_version }}-dev
 
           # Set up alternatives
-          for bin in clang clang++ clang-tidy clang-format llvm-ar; do
+          for bin in clang clang++ clang-tidy clang-format llvm-ar FileCheck; do
             sudo update-alternatives --remove-all "$bin" 2>/dev/null || true
           done
 
@@ -105,6 +105,7 @@ jobs:
           sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar /usr/bin/llvm-ar-${{ matrix.llvm_version }} 100
           sudo update-alternatives --install /usr/bin/llvm-nm llvm-nm /usr/bin/llvm-nm-${{ matrix.llvm_version }} 100
           sudo update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib /usr/bin/llvm-ranlib-${{ matrix.llvm_version }} 100
+          sudo update-alternatives --install /usr/bin/FileCheck FileCheck /usr/bin/FileCheck-${{ matrix.llvm_version }} 100
 
           sudo update-alternatives --set clang /usr/bin/clang-${{ matrix.llvm_version }}
           sudo update-alternatives --set clang++ /usr/bin/clang++-${{ matrix.llvm_version }}
@@ -113,6 +114,7 @@ jobs:
           sudo update-alternatives --set llvm-ar /usr/bin/llvm-ar-${{ matrix.llvm_version }}
           sudo update-alternatives --set llvm-nm /usr/bin/llvm-nm-${{ matrix.llvm_version }}
           sudo update-alternatives --set llvm-ranlib /usr/bin/llvm-ranlib-${{ matrix.llvm_version }}
+          sudo update-alternatives --set FileCheck /usr/bin/FileCheck-${{ matrix.llvm_version }}
 
           clang --version
           clang++ --version
@@ -121,6 +123,7 @@ jobs:
           llvm-ar --version
           llvm-nm --version
           llvm-ranlib --version
+          FileCheck --version
 
       - name: Install dependencies (MinGW)
         if: matrix.target_platform == 'mingw'
@@ -169,7 +172,7 @@ jobs:
             --build_mode=release \
             --target_platform=${{ matrix.target_platform }} \
             --no-install \
-            --extra_args="-DBUILD_CORE_SHARED=true,-DENABLE_XRAY=false,-DENABLE_SANITIZERS=false,-DENABLE_BUILD_REPORT=false,-DENABLE_LTO=true,-DENABLE_NATIVE_ARCH=true,-DENABLE_LLVM_UNWIND=true,-DENABLE_VERBOSE=true,-DENABLE_COVERAGE=false,-DWARNINGS_AS_ERRORS=false"
+            --extra_args="-DBUILD_SHARED=true,-DENABLE_XRAY=false,-DENABLE_SANITIZERS=false,-DENABLE_BUILD_REPORT=false,-DENABLE_LTO=true,-DENABLE_NATIVE_ARCH=true,-DENABLE_LLVM_UNWIND=true,-DENABLE_VERBOSE=true,-DENABLE_COVERAGE=false,-DWARNINGS_AS_ERRORS=false,-DENABLE_RUN_PROGRAM_POST_BUILD=false,-DENABLE_RUN_BENCHMARKS_POST_BUILD=false,-DENABLE_RUN_TESTS_POST_BUILD=false"
 
 
       - name: Run build script (Windows)
@@ -178,7 +181,7 @@ jobs:
           call "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath > path.txt
           set /p InstallPath=<path.txt
           call "%InstallPath%\VC\Auxiliary\Build\vcvarsall.bat" x64
-          python3 -u src/build/scripts/build.py --build_mode=release --target_platform=${{ matrix.target_platform }} --no-install --extra_args="-DBUILD_CORE_SHARED=true,-DENABLE_XRAY=false,-DENABLE_SANITIZERS=false,-DENABLE_BUILD_REPORT=false,-DENABLE_LTO=true,-DENABLE_NATIVE_ARCH=true,-DENABLE_LLVM_UNWIND=true,-DENABLE_VERBOSE=true,-DENABLE_COVERAGE=false,-DWARNINGS_AS_ERRORS=false"
+          python3 -u src/build/scripts/build.py --build_mode=release --target_platform=${{ matrix.target_platform }} --no-install --extra_args="-DBUILD_SHARED=true,-DENABLE_XRAY=false,-DENABLE_SANITIZERS=false,-DENABLE_BUILD_REPORT=false,-DENABLE_LTO=true,-DENABLE_NATIVE_ARCH=true,-DENABLE_LLVM_UNWIND=true,-DENABLE_VERBOSE=true,-DENABLE_COVERAGE=false,-DWARNINGS_AS_ERRORS=false,-DENABLE_RUN_PROGRAM_POST_BUILD=false,-DENABLE_RUN_BENCHMARKS_POST_BUILD=false,-DENABLE_RUN_TESTS_POST_BUILD=false"
         shell: cmd
 
       - name: Upload release artifacts

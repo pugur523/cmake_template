@@ -1,5 +1,6 @@
 #include "core/diagnostics/system_info.h"
 
+#include <bit>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -34,8 +35,8 @@ RTL_OSVERSIONINFOW get_windows_version_info() {
   HMODULE h_module = GetModuleHandle("ntdll.dll");
 
   if (h_module) {
-    auto RtlGetVersion =
-        (RtlGetVersionPtr)GetProcAddress(h_module, "RtlGetVersion");
+    auto RtlGetVersion = std::bit_cast<RtlGetVersionPtr>(
+        std::bit_cast<void*>(GetProcAddress(h_module, "RtlGetVersion")));
     if (RtlGetVersion != nullptr) {
       if (RtlGetVersion(&osvi) == STATUS_SUCCESS) {
         return osvi;

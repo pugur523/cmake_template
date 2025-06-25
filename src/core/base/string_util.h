@@ -1,12 +1,10 @@
 #ifndef CORE_BASE_STRING_UTIL_H_
 #define CORE_BASE_STRING_UTIL_H_
 
-#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <cstring>
 #include <format>
-#include <iterator>
 #include <queue>
 #include <string>
 #include <utility>
