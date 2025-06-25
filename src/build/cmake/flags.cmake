@@ -156,7 +156,8 @@ endmacro()
 macro(setup_common_flags)
   # Profiling with llvm-coverage
   if(ENABLE_COVERAGE)
-    list(APPEND PROJECT_COMPILE_OPTIONS -fprofile-instr-generate -fcoverage-mapping)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
   endif()
 
   # Profiling with llvm-xray
@@ -177,7 +178,12 @@ macro(setup_common_flags)
   if(ENABLE_AVX2)
     include(CheckCXXSourceRuns)
 
-    set(AVX2_TEST_CODE "
+    if(CMAKE_CROSSCOMPILING)
+      message(STATUS "Cross-compiling detected. Skipping runtime AVX2 check.")
+
+      set(HAS_AVX2 TRUE)
+    else()
+      set(AVX2_TEST_CODE "
       #include <immintrin.h>
       int main() {
           __m256i a = _mm256_set1_epi32(1);
@@ -186,8 +192,9 @@ macro(setup_common_flags)
       }
     ")
 
-    set(CMAKE_REQUIRED_FLAGS "-mavx2")
-    check_cxx_source_runs("${AVX2_TEST_CODE}" HAS_AVX2)
+      set(CMAKE_REQUIRED_FLAGS "-mavx2")
+      check_cxx_source_runs("${AVX2_TEST_CODE}" HAS_AVX2)
+    endif()
 
     if(HAS_AVX2)
       message(STATUS "AVX2 support detected")

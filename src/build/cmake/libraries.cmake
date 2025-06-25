@@ -37,6 +37,12 @@ macro(setup_google_benchmark)
   set(BENCHMARK_ENABLE_INSTALL FALSE)
   set(BENCHMARK_INSTALL_DOCS FALSE)
 
+  if(MINGW_BUILD)
+    set(HAVE_STD_REGEX FALSE)
+    set(HAVE_STEADY_CLOCK FALSE)
+    set(HAVE_THREAD_SAFETY_ATTRIBUTES FALSE)
+  endif()
+
   add_subdirectory(${GOOGLE_BENCHMARK_DIR})
 
   set(GOOGLE_BENCHMARK_LIBRARIES benchmark::benchmark)

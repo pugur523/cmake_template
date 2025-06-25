@@ -2,6 +2,7 @@
 
 #include <limits.h>
 
+#include <chrono>
 #include <utility>
 
 #include "build/build_config.h"

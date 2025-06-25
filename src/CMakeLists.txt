@@ -101,6 +101,12 @@ if(ENABLE_LLVM_UNWIND AND TARGET_OS_NAME MATCHES "windows")
   set(ENABLE_LLVM_UNWIND FALSE)
 endif()
 
+if(ENABLE_AVX2 AND TARGET_OS_NAME MATCHES "darwin")
+  message(WARNING "ENABLE_AVX2 for Darwin build is not supported.\n"
+    "set ENABLE_AVX2 to false forcely.")
+  set(ENABLE_AVX2 FALSE)
+endif()
+
 if(ENABLE_XRAY AND ENABLE_SANITIZERS)
   message(WARNING "ENABLE_XRAY and ENABLE_SANITIZERS cannot be enabled at the same time.\n"
     "set ENABLE_SANITIZERS to false forcely.")
