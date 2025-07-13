@@ -37,7 +37,7 @@ else()
 endif()
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} lower_build_type)
-option(ENABLE_BUILD_SHARED "build libraries as shared" TRUE)
+option(ENABLE_BUILD_SHARED "build libraries as shared" FALSE)
 option(ENABLE_BUILD_PROGRAM "build standalone executable" TRUE)
 option(ENABLE_BUILD_BENCHMARK "build benchmark module" TRUE)
 option(ENABLE_BUILD_TESTING "build testing module" TRUE)
