@@ -4,7 +4,7 @@
   CMake Template
 </h1>
 
-[![Build](https://github.com/pugur523/cmake_template/actions/workflows/build.yml/badge.svg)](https://github.com/pugur523/cmake_template/actions/workflows/build.yml)
+[![CI](https://github.com/pugur523/cmake_template/actions/workflows/ci.yml/badge.svg)](https://github.com/pugur523/cmake_template/actions/workflows/ci.yml)
 [![Issues](https://img.shields.io/github/issues/pugur523/cmake_template.svg)](https://github.com/pugur523/cmake_template/issues)
 [![License](https://img.shields.io/badge/License-Apache%20License%20Version%202.0-red)](LICENSE)
 [![C](https://img.shields.io/badge/C-blue?logo=c)](https://www.c-language.org/)
