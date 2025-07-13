@@ -47,7 +47,7 @@ option(ENABLE_INSTALL_BENCHMARK "install benchmark module" FALSE)
 option(ENABLE_INSTALL_TESTING "install testing module" FALSE)
 option(ENABLE_RUN_PROGRAM_POST_BUILD "enable running program post build" FALSE)
 option(ENABLE_RUN_BENCHMARK_POST_BUILD "enable running benchmarks post build" FALSE)
-option(ENABLE_RUN_TESTING_POST_BUILD "enable running tests post build" TRUE)
+option(ENABLE_RUN_TESTING_POST_BUILD "enable running tests post build" FALSE)
 
 string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} lower_arch)
 string(TOLOWER ${CMAKE_SYSTEM_NAME} lower_os_name)

@@ -30,9 +30,10 @@ enum class ParseResult : uint8_t {
   kErrorRequiredOptionMissing = 9,
   kErrorPositionalMissing = 10,
   kErrorPositionalParseFailed = 11,
+  kErrorPositionalTooMany = 12,
 
   // Keep this at the end and equal to the last entry.
-  kMaxValue = kErrorPositionalParseFailed,
+  kMaxValue = kErrorPositionalTooMany,
 };
 
 class CORE_EXPORT ArgumentParser {

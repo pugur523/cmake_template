@@ -204,6 +204,11 @@ ParseResult ArgumentParser::parse(int argc, char** argv) {
     }
   }
 
+  if (positional_args.size() > positional_parsers_.size()) {
+    print_error("too many positional arguments provided.");
+    return ParseResult::kErrorPositionalTooMany;
+  }
+
   return ParseResult::kSuccess;
 }
 
