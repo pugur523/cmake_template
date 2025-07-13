@@ -181,7 +181,6 @@ jobs:
             --no-clang_format \
             --extra_args="${{ env.EXTRA_ARGS }}"
 
-
       - name: Run build script (Windows)
         if: matrix.os == 'windows-latest'
         shell: cmd
