@@ -40,6 +40,106 @@ build_modes = [
 ] + build_types
 
 
+def create_arg_parser():
+    parser = argparse.ArgumentParser(description="build script.")
+    parser.add_argument(
+        "--build_mode",
+        type=str,
+        default="debug",
+        choices=build_modes,
+        help="comma-separated build types",
+    )
+    parser.add_argument(
+        "--target_platforms",
+        type=str,
+        default=get_platform_name(),
+        help="comma-separated target platforms",
+    )
+    parser.add_argument(
+        "--target_archs",
+        type=str,
+        default=get_arch_name(),
+        help="comma-separated target architectures",
+    )
+    parser.add_argument(
+        "--clang_format",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="run clang-format before build",
+    )
+    parser.add_argument(
+        "--clang_tidy",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="run clang-tidy analysis on build",
+    )
+    parser.add_argument(
+        "--cpplint",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="run cpplint before build",
+    )
+    parser.add_argument(
+        "--build_async",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="build all configs asynchronously",
+    )
+    parser.add_argument(
+        "--install",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="install post build",
+    )
+    parser.add_argument(
+        "--package",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="create package post build",
+    )
+    parser.add_argument(
+        "--fail_fast",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="return fast on build failure",
+    )
+    parser.add_argument(
+        "--verbose",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="verbose mode",
+    )
+    parser.add_argument(
+        "--extra_args",
+        type=str,
+        default="",
+        help='comma-separated extra arguments to pass to CMake (e.g. "-DOPTION=VALUE,-DXXX=YYY")',
+    )
+    return parser
+
+
+def expand_aliases(argv):
+    aliases = {
+        "--release": "--build_mode=release",
+        "--debug": "--build_mode=debug",
+        "--all": "--build_mode=all",
+        "--windows": "--target_platforms=windows",
+        "--linux": "--target_platforms=linux",
+        "--darwin": "--target_platforms=darwin",
+        "--x86_64": "--target_archs=x86_64",
+        "--amd64": "--target_archs=amd64",
+        "--arm64": "--target_archs=arm64",
+    }
+
+    expanded = []
+    for arg in argv:
+        if arg in aliases:
+            expanded.append(aliases[arg])
+        else:
+            expanded.append(arg)
+    return expanded
+
+
 def select_best_toolchain(build_os, target_os):
     toolchains_dir = os.path.join(project_src_dir, "build", "cmake", "toolchains")
     toolchain_name = target_os
@@ -333,82 +433,23 @@ def build_project(
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description="build script.")
-    parser.add_argument(
-        "--build_mode",
-        type=str,
-        default="debug",
-        choices=build_modes,
-        help="comma-separated build types",
-    )
-    parser.add_argument(
-        "--target_platforms",
-        type=str,
-        default=get_platform_name(),
-        help="comma-separated target platforms",
-    )
-    parser.add_argument(
-        "--target_archs",
-        type=str,
-        default=get_arch_name(),
-        help="comma-separated target architectures",
-    )
-    parser.add_argument(
-        "--clang_format",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="run clang-format before build",
-    )
-    parser.add_argument(
-        "--clang_tidy",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="run clang-tidy analysis on build",
-    )
-    parser.add_argument(
-        "--cpplint",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="run cpplint before build",
-    )
-    parser.add_argument(
-        "--build_async",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="build all configs asynchronously",
-    )
-    parser.add_argument(
-        "--install",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="install post build",
-    )
-    parser.add_argument(
-        "--package",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="create package post build",
-    )
-    parser.add_argument(
-        "--fail_fast",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="return fast on build failure",
-    )
-    parser.add_argument(
-        "--verbose",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="verbose mode",
-    )
-    parser.add_argument(
-        "--extra_args",
-        type=str,
-        default="",
-        help='comma-separated extra arguments to pass to CMake (e.g. "-DOPTION=VALUE,-DXXX=YYY")',
-    )
+    argv = expand_aliases(argv[1:])
 
-    args = parser.parse_args()
+    # Split known args and unknown args (for -- extra args)
+    if "--" in argv:
+        split_index = argv.index("--")
+        known_args = argv[:split_index]
+        extra_args_list = argv[split_index + 1:]
+    else:
+        known_args = argv
+        extra_args_list = []
+
+    parser = create_arg_parser()
+
+    args = parser.parse_args(known_args)
+
+    if extra_args_list:
+        args.extra_args += (",".join(extra_args_list))
 
     if args.clang_format:
         run_clang_format(project_root_dir)

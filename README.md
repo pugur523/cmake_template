@@ -378,7 +378,7 @@ The [core](src/core) module is included by default. To add a new module, create 
 ```shell
 $ python3 ./src/build/scripts/build.py -h
 ```
-The above command will output help for arguments. Here are some common usage examples:
+The above command will output help for arguments. It doesn't contain some aliases such as `--debug`, `--release`. Here are some common usage examples:
 
 <details open>
   <summary>
@@ -386,7 +386,12 @@ The above command will output help for arguments. Here are some common usage exa
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
+python3 ./src/build/scripts/build.py \
+    --release
+```
+or
+```shell
+python3 ./src/build/scripts/build.py \
     --build_mode=release
 ```
 
@@ -398,8 +403,8 @@ $ python3 ./src/build/scripts/build.py \
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
-    --build_mode=all \
+python3 ./src/build/scripts/build.py \
+    --all \
     --target_platform=linux,windows
 ```
 
@@ -411,10 +416,17 @@ $ python3 ./src/build/scripts/build.py \
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
-    --build_mode=debug \
+python3 ./src/build/scripts/build.py \
+    --debug \
+    -- "-D ENABLE_SANITIZERS=false,-D ENABLE_XRAY=true
+```
+or
+```shell
+python3 ./src/build/scripts/build.py \
+    --debug \
     --extra_args="-D ENABLE_SANITIZERS=false,-D ENABLE_XRAY=true
 ```
+> Arguments after `--` will be passed directly to the `--extra_args`
 
 </details>
 
@@ -424,9 +436,9 @@ $ python3 ./src/build/scripts/build.py \
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
-    --build_mode=all \
-    --extra_args="-D ENABLE_SANITIZERS=false,-D ENABLE_XRAY=true,-D ENABLE_COVERAGE=true,-D ENABLE_OPTIMIZATION_REPORT=true,-D ENABLE_LTO=true"
+python3 ./src/build/scripts/build.py \
+    --all \
+    -- "-D ENABLE_SANITIZERS=false,-D ENABLE_XRAY=true,-D ENABLE_COVERAGE=true,-D ENABLE_OPTIMIZATION_REPORT=true,-D ENABLE_LTO=true"
 ```
 
 </details>
@@ -437,7 +449,7 @@ $ python3 ./src/build/scripts/build.py \
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
+python3 ./src/build/scripts/build.py \
     --no-install \
     --no-package
 ```
@@ -450,8 +462,8 @@ $ python3 ./src/build/scripts/build.py \
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
-    --extra_args="-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTING_POST_BUILD=true"
+python3 ./src/build/scripts/build.py \
+    -- "-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTING_POST_BUILD=true"
 ```
 
 </details>

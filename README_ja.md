@@ -324,7 +324,7 @@ $ git clone --recursive https://github.com/<your_username>/<repository_name>.git
 $ python3 ./src/build/scripts/build.py
 ```
 上記のコマンドを実行するとビルド環境と同じプラットフォーム / CPUアーキテクチャ向けのdebug buildが行われます。<br/>
-Windows上では`vcvars64.bat`によりx64用の環境変数を設定する必要があるため、**x64 Native Tools Command Prompt for VS 2022**上でビルドを行う必要があります。
+Windows上では`vcvars64.bat`によりx64用の環境変数を設定する必要があるため、これを実行するか、**x64 Native Tools Command Prompt for VS 2022**上でビルドを行う必要があります。
 build targetは`//out/build/<platform>/<arch>/debug`、install targetは`//out/install/<platform>/<arch>/debug`に生成されます。<br/>
 このとき、サブモジュールが正しくセットアップされていない場合はエラーが出るので`git submodule update --init --recursive`で全てのサブモジュールを初期化してから再実行してください。
 
@@ -382,7 +382,7 @@ author_email = "pugurmc@gmail.com"
 ```shell
 $ python3 ./src/build/scripts/build.py -h
 ```
-上記のコマンドにより引数に関するヘルプメッセージが出力されますが、ここでは一般的な使用例をいくつか示しておきます。
+上記のコマンドにより引数に関するヘルプメッセージが出力されますが、ここでは一般的な使用例をいくつか示しておきます。また、このヘルプメッセージに`--debug`や`--release`などの一部のエイリアスは含まれていません。
 
 <details open>
   <summary>
@@ -390,7 +390,12 @@ $ python3 ./src/build/scripts/build.py -h
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
+python3 ./src/build/scripts/build.py \
+    --release
+```
+または
+```shell
+python3 ./src/build/scripts/build.py \
     --build_mode=release
 ```
 
@@ -402,9 +407,9 @@ $ python3 ./src/build/scripts/build.py \
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
-    --build_mode=all \
-    --target_platform=linux,windows
+python3 ./src/build/scripts/build.py \
+    --all \
+    --target_platforms=linux,windows
 ```
 
 </details>
@@ -415,10 +420,17 @@ $ python3 ./src/build/scripts/build.py \
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
-    --build_mode=debug \
-    --extra_args="-D ENABLE_SANITIZERS=false,-D ENABLE_XRAY=true
+python3 ./src/build/scripts/build.py \
+    --debug \
+    -- "-D ENABLE_SANITIZERS=false,-D ENABLE_XRAY=true"
 ```
+または
+```shell
+python3 ./src/build/scripts/build.py \
+    --debug \
+    --extra_args="-D ENABLE_SANITIZERS=false,-D ENABLE_XRAY=true"
+```
+> `--`以降に指定された引数は`extra_args`に直接渡されます
 
 </details>
 
@@ -428,9 +440,9 @@ $ python3 ./src/build/scripts/build.py \
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
-    --build_mode=all \
-    --extra_args="-D ENABLE_SANITIZERS=false,-D ENABLE_XRAY=true,-D ENABLE_COVERAGE=true,-D ENABLE_OPTIMIZATION_REPORT=true,-D ENABLE_LTO=true"
+python3 ./src/build/scripts/build.py \
+    --all \
+    -- "-D ENABLE_SANITIZERS=false,-D ENABLE_XRAY=true,-D ENABLE_COVERAGE=true,-D ENABLE_OPTIMIZATION_REPORT=true,-D ENABLE_LTO=true"
 ```
 
 </details>
@@ -454,8 +466,8 @@ $ python3 ./src/build/scripts/build.py \
   </summary>
 
 ```shell
-$ python3 ./src/build/scripts/build.py \
-    --extra_args="-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTING_POST_BUILD=true"
+python3 ./src/build/scripts/build.py \
+    -- "-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTING_POST_BUILD=true"
 ```
 
 </details>

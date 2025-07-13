@@ -162,6 +162,8 @@ jobs:
       - name: Install dependencies (MacOS)
         if: matrix.target_platform == 'darwin'
         run: |
+          xcode-select --install
+
           brew update
           brew install --formula cmake yasm nasm llvm@${{ matrix.llvm_version }} lld@${{ matrix.llvm_version }}
 
