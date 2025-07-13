@@ -28,9 +28,9 @@ set_target_properties(${TEST_NAME} PROPERTIES
 set(NEED_RUN TRUE)
 
 if(MINGW_BUILD)
-  set(EXE_COMMAND wine $<TARGET_FILE:${TEST_NAME}>)
+  set(EXE_COMMAND "wine $<TARGET_FILE:${TEST_NAME}>")
 else()
-  set(EXE_COMMAND $<TARGET_FILE:${TEST_NAME}>)
+  set(EXE_COMMAND "$<TARGET_FILE:${TEST_NAME}>")
 endif()
 
 if(ENABLE_COVERAGE AND ENABLE_RUN_TESTING_POST_BUILD)
@@ -91,10 +91,10 @@ if(ENABLE_INSTALL_TESTING)
   )
 endif()
 
-add_test(
-  NAME ${TEST_NAME}
-  COMMAND ${TEST_NAME}
-)
+# add_test(
+#   NAME ${TEST_NAME}
+#   COMMAND ${TEST_NAME}
+# )
 
 if(ENABLE_VERBOSE)
   describe_target(${TEST_NAME})
