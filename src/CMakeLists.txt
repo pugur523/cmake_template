@@ -5,6 +5,7 @@ set(CMAKE_CXX_EXTENSIONS FALSE)
 
 set(PROJECT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(PROJECT_ROOT_DIR "${PROJECT_SOURCE_DIR}/..")
+set(PROJECT_OUT_DIR "${PROJECT_ROOT_DIR}/out")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/build/cmake")
 set(BUILD_RESOURCES_DIR "${PROJECT_SOURCE_DIR}/build/resources")
 set(THIRD_PARTY_DIR "${PROJECT_SOURCE_DIR}/third_party")
@@ -36,17 +37,17 @@ else()
 endif()
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} lower_build_type)
-option(BUILD_SHARED "build libraries as shared" TRUE)
-option(BUILD_PROGRAM "build standalone executable" TRUE)
-option(BUILD_BENCHMARK "build benchmark module" TRUE)
-option(BUILD_TESTING "build testing module" TRUE)
-option(INSTALL_PROGRAM "install standalone executable" TRUE)
-option(INSTALL_LIBS "install libraries" TRUE)
-option(INSTALL_BENCHMARK "install benchmark module" FALSE)
-option(INSTALL_TESTING "install testing module" FALSE)
+option(ENABLE_BUILD_SHARED "build libraries as shared" TRUE)
+option(ENABLE_BUILD_PROGRAM "build standalone executable" TRUE)
+option(ENABLE_BUILD_BENCHMARK "build benchmark module" TRUE)
+option(ENABLE_BUILD_TESTING "build testing module" TRUE)
+option(ENABLE_INSTALL_PROGRAM "install standalone executable" TRUE)
+option(ENABLE_INSTALL_LIBS "install libraries" TRUE)
+option(ENABLE_INSTALL_BENCHMARK "install benchmark module" FALSE)
+option(ENABLE_INSTALL_TESTING "install testing module" FALSE)
 option(ENABLE_RUN_PROGRAM_POST_BUILD "enable running program post build" FALSE)
-option(ENABLE_RUN_BENCHMARKS_POST_BUILD "enable running benchmarks post build" FALSE)
-option(ENABLE_RUN_TESTS_POST_BUILD "enable running tests post build" TRUE)
+option(ENABLE_RUN_BENCHMARK_POST_BUILD "enable running benchmarks post build" FALSE)
+option(ENABLE_RUN_TESTING_POST_BUILD "enable running tests post build" TRUE)
 
 string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} lower_arch)
 string(TOLOWER ${CMAKE_SYSTEM_NAME} lower_os_name)
@@ -69,7 +70,7 @@ option(ENABLE_SANITIZERS "enable address and undefined sanitizers" TRUE)
 option(ENABLE_LLVM_UNWIND "enable llvm libunwind to fetch stacktrace" TRUE)
 option(ENABLE_AVX2 "enable avx2 if available" TRUE)
 
-option(WARNINGS_AS_ERRORS "treat warnings as errors" TRUE)
+option(ENABLE_WARNINGS_AS_ERRORS "treat warnings as errors" TRUE)
 
 if(ENABLE_OPTIMIZATION_REPORT AND HOST_OS_NAME MATCHES "windows")
   message(WARNING "ENABLE_OPTIMIZATION_REPORT on Windows build is not supported.\n"
@@ -141,9 +142,10 @@ include(flags)
 setup_flags()
 
 include(libraries)
+setup_zlib()
 setup_llvm()
 setup_toml11()
-setup_zlib()
+setup_femtolog()
 
 include(package)
 setup_package()
@@ -165,8 +167,11 @@ list(APPEND PROJECT_INCLUDE_DIRECTORIES
   ${LLVM_INCLUDE_DIRS}
   ${TOML11_INCLUDE_DIR}
   ${ZLIB_INCLUDE_DIR}
-  ${ZSTD_INCLUDE_DIR}
+  ${FEMTOLOG_INCLUDE_DIR}
   ${ADDITIONAL_INCLUDE_DIRECTORIES}
+  ${GTEST_INCLUDE_DIR}
+  ${GMOCK_INCLUDE_DIR}
+  ${GOOGLE_BENCHMARK_INCLUDE_DIR}
 )
 
 list(APPEND PROJECT_LINK_DIRECTORIES
@@ -176,8 +181,8 @@ list(APPEND PROJECT_LINK_DIRECTORIES
 
 list(APPEND PROJECT_LINK_LIBRARIES
   ${MINGW_LINK_LIBRARIES}
-  ${LLVM_LINK_LIBRARIES}
   ${WINDOWS_LINK_LIBRARIES}
+  ${FEMTOLOG_LIBRARIES}
   ${ADDITIONAL_LINK_LIBRARIES}
 )
 
@@ -195,57 +200,58 @@ host os name: ${HOST_OS_NAME}
 host arch name: ${HOST_ARCH_NAME}
 target os name: ${TARGET_OS_NAME}
 target arch name: ${TARGET_ARCH_NAME}
-include directories: ${PROJECT_INCLUDE_DIRECTORIES}
-link directories: ${PROJECT_LINK_DIRECTORIES}
-link libraries: ${PROJECT_LINK_LIBRARIES}
+project include directories: ${PROJECT_INCLUDE_DIRECTORIES}
 project compile options: ${PROJECT_COMPILE_OPTIONS}
+project compile definitions: ${PROJECT_COMPILE_DEFINITIONS}
 project link options: ${PROJECT_LINK_OPTIONS}
+project link directories: ${PROJECT_LINK_DIRECTORIES}
+project link libraries: ${PROJECT_LINK_LIBRARIES}
 install prefix: ${CMAKE_INSTALL_PREFIX}
 build resources dir: ${BUILD_RESOURCES_DIR}
 is mingw build: ${MINGW_BUILD}
 toolchain file: ${CMAKE_TOOLCHAIN_FILE}
 build debug: ${BUILD_DEBUG}
-build shared: ${BUILD_SHARED}
-build program: ${BUILD_PROGRAM}
-build benchmark: ${BUILD_BENCHMARK}
-build testing: ${BUILD_TESTING}
-install program: ${INSTALL_PROGRAM}
-install libs: ${INSTALL_LIBS}
-install benchmark: ${INSTALL_BENCHMARK}
-install testing: ${INSTALL_TESTING}
+enable build shared: ${ENABLE_BUILD_SHARED}
+enable build program: ${ENABLE_BUILD_PROGRAM}
+enable build benchmark: ${ENABLE_BUILD_BENCHMARK}
+enable build testing: ${ENABLE_BUILD_TESTING}
+enable install program: ${ENABLE_INSTALL_PROGRAM}
+enable install libs: ${ENABLE_INSTALL_LIBS}
+enable install benchmark: ${ENABLE_INSTALL_BENCHMARK}
+enable install testing: ${ENABLE_INSTALL_TESTING}
 enable run program post build: ${ENABLE_RUN_PROGRAM_POST_BUILD}
-enable run benchmarks post build: ${ENABLE_RUN_BENCHMARKS_POST_BUILD}
-enable run tests post build: ${ENABLE_RUN_TESTS_POST_BUILD}
+enable run benchmark post build: ${ENABLE_RUN_BENCHMARK_POST_BUILD}
+enable run testing post build: ${ENABLE_RUN_TESTING_POST_BUILD}
 enable verbose: ${ENABLE_VERBOSE}
 enable lto: ${ENABLE_LTO}
 enable native arch: ${ENABLE_NATIVE_ARCH}
-generate build report: ${ENABLE_BUILD_REPORT}
+enable build report: ${ENABLE_BUILD_REPORT}
 enable profile: ${ENABLE_COVERAGE}
 enable optimization report: ${ENABLE_OPTIMIZATION_REPORT}
 enable xray: ${ENABLE_XRAY}
 enable sanitizers: ${ENABLE_SANITIZERS}
 enable llvm unwind: ${ENABLE_LLVM_UNWIND}
 enable avx2: ${ENABLE_AVX2}
-warnings as errors: ${WARNINGS_AS_ERRORS}
+enable warnings as errors: ${ENABLE_WARNINGS_AS_ERRORS}
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-${ColourReset}")
   print_all_build_flags()
 endif()
 
-add_subdirectory(build)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/build)
 
-if(BUILD_PROGRAM)
-  add_subdirectory(app)
+if(ENABLE_BUILD_PROGRAM)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/app)
 endif()
 
-add_subdirectory(core)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/core)
 
-if(BUILD_TESTING)
+if(ENABLE_BUILD_TESTING)
   setup_gtest()
   enable_testing()
-  add_subdirectory(testing)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/testing)
 endif()
 
-if(BUILD_BENCHMARK)
+if(ENABLE_BUILD_BENCHMARK)
   setup_google_benchmark()
-  add_subdirectory(bench)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/bench)
 endif()

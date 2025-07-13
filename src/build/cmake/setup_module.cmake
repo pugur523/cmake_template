@@ -1,5 +1,5 @@
 function(setup_module module_name objects_name)
-  set(multi_value_args INCLUDE_DIRS LINK_DIRS COMPILE_OPTIONS LINK_OPTIONS LINK_LIBS)
+  set(multi_value_args INCLUDE_DIRS LINK_DIRS COMPILE_OPTIONS LINK_OPTIONS LINK_LIBS COMPILE_DEFINITIONS)
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
   string(TOUPPER ${module_name} UPPER_MODULE_NAME)
@@ -10,6 +10,18 @@ function(setup_module module_name objects_name)
     target_include_directories(${objects_name} PRIVATE ${ARG_INCLUDE_DIRS})
   endif()
 
+  if(ARG_COMPILE_OPTIONS)
+    target_compile_options(${objects_name} PRIVATE ${ARG_COMPILE_OPTIONS})
+  endif()
+
+  if(ARG_COMPILE_DEFINITIONS)
+    target_compile_definitions(${objects_name} PRIVATE ${ARG_COMPILE_DEFINITIONS})
+  endif()
+
+  if(ARG_LINK_OPTIONS)
+    target_link_options(${objects_name} PRIVATE ${ARG_LINK_OPTIONS})
+  endif()
+
   if(ARG_LINK_DIRS)
     target_link_directories(${objects_name} PRIVATE ${ARG_LINK_DIRS})
   endif()
@@ -18,20 +30,12 @@ function(setup_module module_name objects_name)
     target_link_libraries(${objects_name} PRIVATE ${ARG_LINK_LIBS})
   endif()
 
-  if(ARG_COMPILE_OPTIONS)
-    target_compile_options(${objects_name} PRIVATE ${ARG_COMPILE_OPTIONS})
-  endif()
-
-  if(ARG_LINK_OPTIONS)
-    target_link_options(${objects_name} PRIVATE ${ARG_LINK_OPTIONS})
-  endif()
-
   set_target_properties(${objects_name} PROPERTIES
     POSITION_INDEPENDENT_CODE TRUE
   )
 
   set(build_option_name BUILD_${UPPER_MODULE_NAME}_SHARED)
-  option(${build_option_name} "build ${module_name} as shared lib" ${BUILD_SHARED})
+  option(${build_option_name} "build ${module_name} as shared lib" ${ENABLE_BUILD_SHARED})
 
   if(${${build_option_name}})
     add_library(${module_name} SHARED $<TARGET_OBJECTS:${objects_name}>)
@@ -45,20 +49,24 @@ function(setup_module module_name objects_name)
     target_include_directories(${module_name} PRIVATE ${ARG_INCLUDE_DIRS})
   endif()
 
+  if(ARG_COMPILE_OPTIONS)
+    target_compile_options(${module_name} PRIVATE ${ARG_COMPILE_OPTIONS})
+  endif()
+
+  if(ARG_COMPILE_DEFINITIONS)
+    target_compile_definitions(${module_name} PRIVATE ${ARG_COMPILE_DEFINITIONS})
+  endif()
+
+  if(ARG_LINK_OPTIONS)
+    target_link_options(${module_name} PRIVATE ${ARG_LINK_OPTIONS})
+  endif()
+
   if(ARG_LINK_DIRS)
     target_link_directories(${module_name} PRIVATE ${ARG_LINK_DIRS})
   endif()
 
   if(ARG_LINK_LIBS)
     target_link_libraries(${module_name} PRIVATE ${ARG_LINK_LIBS})
-  endif()
-
-  if(ARG_COMPILE_OPTIONS)
-    target_compile_options(${module_name} PRIVATE ${ARG_COMPILE_OPTIONS})
-  endif()
-
-  if(ARG_LINK_OPTIONS)
-    target_link_options(${module_name} PRIVATE ${ARG_LINK_OPTIONS})
   endif()
 
   set_target_properties(${module_name} PROPERTIES
@@ -72,13 +80,17 @@ function(setup_module module_name objects_name)
   endif()
 
   set(install_option_name INSTALL_${UPPER_MODULE_NAME})
-  option(${install_option_name} "install ${module_name}" ${INSTALL_LIBS})
+  option(${install_option_name} "install ${module_name}" ${ENABLE_INSTALL_LIBS})
 
-  if(${INSTALL_LIBS} AND ${${install_option_name}})
+  if(${ENABLE_INSTALL_LIBS} AND ${${install_option_name}})
     install(
       TARGETS ${module_name}
       RUNTIME
       COMPONENT Runtime
+      ARCHIVE
+      COMPONENT Archive
+      LIBRARY
+      COMPONENT Library
     )
 
     install(

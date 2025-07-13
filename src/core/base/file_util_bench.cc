@@ -40,21 +40,21 @@ void file_util_dir_exists(benchmark::State& state) {
 }
 BENCHMARK(file_util_dir_exists);
 
-void file_util_get_exe_path(benchmark::State& state) {
+void file_util_exe_path(benchmark::State& state) {
   for (auto _ : state) {
-    std::string exe_path = get_exe_path();
-    benchmark::DoNotOptimize(exe_path);
+    std::string this_path = exe_path();
+    benchmark::DoNotOptimize(this_path);
   }
 }
-BENCHMARK(file_util_get_exe_path);
+BENCHMARK(file_util_exe_path);
 
-void file_util_get_exe_dir(benchmark::State& state) {
+void file_util_exe_dir(benchmark::State& state) {
   for (auto _ : state) {
-    std::string exe_dir = get_exe_dir();
-    benchmark::DoNotOptimize(exe_dir);
+    std::string this_dir = exe_dir();
+    benchmark::DoNotOptimize(this_dir);
   }
 }
-BENCHMARK(file_util_get_exe_dir);
+BENCHMARK(file_util_exe_dir);
 
 void file_util_list_files(benchmark::State& state) {
   with_temp_dir([&](const std::string& dir) {
@@ -137,11 +137,12 @@ void file_util_create_directory(benchmark::State& state) {
 }
 BENCHMARK(file_util_create_directory);
 
-std::string generate_large_content(size_t num_lines, size_t line_length) {
+std::string generate_large_content(std::size_t num_lines,
+                                   std::size_t line_length) {
   std::string content;
   content.reserve(num_lines * (line_length + 1));  // +1 for newline
-  for (size_t i = 0; i < num_lines; ++i) {
-    for (size_t j = 0; j < line_length; ++j) {
+  for (std::size_t i = 0; i < num_lines; ++i) {
+    for (std::size_t j = 0; j < line_length; ++j) {
       content += 'a' + (j % 26);  // a-z
     }
     content += '\n';
@@ -151,8 +152,8 @@ std::string generate_large_content(size_t num_lines, size_t line_length) {
 
 template <bool use_avx>
 void file_util_read_lines_internal(benchmark::State& state) {
-  const size_t num_lines = 1000;
-  const size_t line_length = 80;
+  const std::size_t num_lines = 1000;
+  const std::size_t line_length = 80;
   const std::string large_content =
       generate_large_content(num_lines, line_length);
 
@@ -174,8 +175,8 @@ void file_util_read_lines_with_avx2(benchmark::State& state) {
 BENCHMARK(file_util_read_lines_with_avx2);
 
 void file_util_file_constructor(benchmark::State& state) {
-  const size_t num_lines = 1000;
-  const size_t line_length = 80;
+  const std::size_t num_lines = 1000;
+  const std::size_t line_length = 80;
   const std::string file_name = "test_file.txt";
   const std::string large_content =
       generate_large_content(num_lines, line_length);
@@ -190,8 +191,8 @@ void file_util_file_constructor(benchmark::State& state) {
 BENCHMARK(file_util_file_constructor);
 
 void file_util_file_line_access_random(benchmark::State& state) {
-  const size_t num_lines = 1000;
-  const size_t line_length = 80;
+  const std::size_t num_lines = 1000;
+  const std::size_t line_length = 80;
   const std::string large_content =
       generate_large_content(num_lines, line_length);
   File f("test_file.txt", std::string(large_content));
@@ -200,7 +201,7 @@ void file_util_file_line_access_random(benchmark::State& state) {
   std::uniform_int_distribution<> distrib(1, num_lines);
 
   for (auto _ : state) {
-    size_t line_no = distrib(gen);
+    std::size_t line_no = distrib(gen);
     f.line(line_no);
   }
   state.SetBytesProcessed(state.iterations() * line_length);
@@ -208,13 +209,13 @@ void file_util_file_line_access_random(benchmark::State& state) {
 BENCHMARK(file_util_file_line_access_random);
 
 void file_util_file_line_access_sequential(benchmark::State& state) {
-  const size_t num_lines = 1000;
-  const size_t line_length = 80;
+  const std::size_t num_lines = 1000;
+  const std::size_t line_length = 80;
   const std::string large_content =
       generate_large_content(num_lines, line_length);
   File f("test_file.txt", std::string(large_content));
 
-  size_t current_line = 1;
+  std::size_t current_line = 1;
 
   for (auto _ : state) {
     f.line(current_line);
@@ -229,8 +230,8 @@ void file_util_file_line_access_sequential(benchmark::State& state) {
 BENCHMARK(file_util_file_line_access_sequential);
 
 void file_util_file_source_access(benchmark::State& state) {
-  const size_t num_lines = 1000;
-  const size_t line_length = 80;
+  const std::size_t num_lines = 1000;
+  const std::size_t line_length = 80;
   const std::string large_content =
       generate_large_content(num_lines, line_length);
   File f("test_file.txt", std::string(large_content));

@@ -11,7 +11,6 @@
 #include "core/diagnostics/stack_trace_entry.h"
 
 #if IS_WINDOWS
-#define NOMINMAX
 // clang-format off
 #include <windows.h>
 #include <dbghelp.h>
@@ -310,14 +309,14 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
       0, static_cast<DWORD>(first_frame + max_frames), stack, nullptr);
   WORD frames = std::min<WORD>(raw_frames - first_frame, max_frames);
 
-  constexpr int MAX_NAME_LEN = 256;
+  constexpr int kMaxNameLen = 256;
   // alignas(SYMBOL_INFO) char symbol_buffer[sizeof(SYMBOL_INFO) +
-  // MAX_NAME_LEN];
-  char symbol_buffer[sizeof(SYMBOL_INFO) + MAX_NAME_LEN * sizeof(TCHAR)];
+  // kMaxNameLen];
+  char symbol_buffer[sizeof(SYMBOL_INFO) + kMaxNameLen * sizeof(TCHAR)];
   SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(symbol_buffer);
   std::memset(symbol, 0, sizeof(symbol_buffer));
 
-  symbol->MaxNameLen = MAX_NAME_LEN;
+  symbol->MaxNameLen = kMaxNameLen;
   symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 
   IMAGEHLP_LINE64 line;
@@ -401,7 +400,7 @@ struct WindowsStackTraceHandler {
     sym_options |= SYMOPT_FAIL_CRITICAL_ERRORS;  // Don't show error dialogs
     sym_options &= ~SYMOPT_NO_PROMPTS;           // Disable prompts
     SymSetOptions(sym_options);
-    SymInitialize(GetCurrentProcess(), get_exe_dir().c_str(), TRUE);
+    SymInitialize(GetCurrentProcess(), exe_dir().c_str(), TRUE);
   }
 
   ~WindowsStackTraceHandler() { SymCleanup(GetCurrentProcess()); }

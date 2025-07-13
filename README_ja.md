@@ -37,6 +37,8 @@ LLVM系統のツールを活用し、軽量で高度に最適化されたC/C++�
   - [パフォーマンスプロファイリング](#パフォーマンスプロファイリング)
 - [ビルド成果物の配布](#ビルド成果物の配布)
 
+</details>
+
 ## このテンプレートの特長
 
 - **高速で洗練されたビルド**: clang, lld, ninjaなど各種ツールによる最適化高速ビルドと、llvm-opt-viewerによる最適化分析
@@ -59,9 +61,6 @@ LLVM系統のツールを活用し、軽量で高度に最適化されたC/C++�
 |      [**toml11**](https://github.com/ToruNiina/toml11)      | configなどに最適なTOMLパーサー/リーダー                          |
 
 これらのライブラリが必要ない場合には[外部ライブラリ管理](#外部ライブラリ管理)を参照のもと、プロジェクトから削除してください。<br/>
-
-
-</details>
 
 ## はじめる
 
@@ -230,8 +229,8 @@ $ git clone --recursive https://github.com/<your_username>/<repository_name>.git
     ```shell
     $ sudo dpkg --add-architecture i386
     $ sudo apt-get update && sudo apt-get install -y nsis wine wine32
-    $ echo $(./src/build/scripts/install_llvm_mingw.sh) >> ~/.bashrc
-    $ source ~/.bashrc
+    $ source ./src/build/scripts/install_llvm_mingw.sh
+    $ echo "LLVM_MINGW_DIR=${LLVM_MINGW_DIR}" >> $HOME/.bashrc
     ```
 
 </details>
@@ -376,7 +375,7 @@ author_email = "pugurmc@gmail.com"
 
 ### モジュール追加方法
 
-[core](src/core)モジュールがデフォルトで組み込まれているので、これと同様に`//src/`内に新たに追加したいモジュールのディレクトリを作成し、coreの[CMakeLists.txt](src/core/CMakeLists.txt)から`MODULE_NAME`と`MODULE_OBJECTS_NAME`をそれぞれ変更し、必要なソースファイルのリストを`SOURCES`に設定しなおしたものを新たなモジュールのディレクトリに追加してください。`setup_module`に渡す引数を変更することでそのモジュールに設定するインクルードディレクトリ、リンクディレクトリ、コンパイルオプション、リンクオプション、リンクライブラリをそれぞれ設定可能です。また、ビルド時にそのライブラリをstatic / sharedのどちらとしてビルドするかは`"-D BUILD_SHARED=<true|false>"`と`"-D BUILD_<UPPER_MODULE_NAME>_SHARED=<true|false>"`で指定可能です。例として、coreをstaticライブラリとしてビルドしたい場合は`"-D BUILD_CORE_SHARED=false"`により実現できます。
+[core](src/core)モジュールがデフォルトで組み込まれているので、これと同様に`//src/`内に新たに追加したいモジュールのディレクトリを作成し、coreの[CMakeLists.txt](src/core/CMakeLists.txt)から`MODULE_NAME`と`MODULE_OBJECTS_NAME`をそれぞれ変更し、必要なソースファイルのリストを`SOURCES`に設定しなおしたものを新たなモジュールのディレクトリに追加してください。`setup_module`に渡す引数を変更することでそのモジュールに設定するインクルードディレクトリ、リンクディレクトリ、コンパイルオプション、リンクオプション、リンクライブラリをそれぞれ設定可能です。また、ビルド時にそのライブラリをstatic / sharedのどちらとしてビルドするかは`"-D ENABLE_BUILD_SHARED=<true|false>"`と`"-D BUILD_<UPPER_MODULE_NAME>_SHARED=<true|false>"`で指定可能です。例として、coreをstaticライブラリとしてビルドしたい場合は`"-D BUILD_CORE_SHARED=false"`により実現できます。
 
 ### ビルド引数のカスタマイズ
 
@@ -456,7 +455,7 @@ $ python3 ./src/build/scripts/build.py \
 
 ```shell
 $ python3 ./src/build/scripts/build.py \
-    --extra_args="-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTS_POST_BUILD=true"
+    --extra_args="-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTING_POST_BUILD=true"
 ```
 
 </details>

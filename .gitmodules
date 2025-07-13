@@ -10,3 +10,6 @@
 [submodule "src/third_party/google_benchmark"]
 	path = src/third_party/google_benchmark
 	url = https://github.com/google/benchmark
+[submodule "src/third_party/femtolog"]
+	path = src/third_party/femtolog
+	url = https://github.com/pugur523/femtolog.git

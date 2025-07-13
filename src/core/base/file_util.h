@@ -18,25 +18,30 @@ namespace core {
 
 constexpr const std::size_t kPathMaxLength = 4096;
 constexpr const std::size_t kPredictedFilesNbPerDir = 64;
+using Files = std::vector<std::string>;
 
 [[nodiscard]] CORE_EXPORT bool file_exists(const char* file_name);
 [[nodiscard]] CORE_EXPORT bool dir_exists(const char* dir_name);
 [[nodiscard]] CORE_EXPORT std::string read_file(const char* path);
-[[nodiscard]] CORE_EXPORT const std::string& get_exe_path();
-[[nodiscard]] CORE_EXPORT const std::string& get_exe_dir();
-[[nodiscard]] CORE_EXPORT const std::string& get_resources_dir();
-[[nodiscard]] CORE_EXPORT bool is_executable_in_path(
-    const char* executable_name);
-[[nodiscard]] CORE_EXPORT std::vector<std::string> list_files(
-    const std::string& path);
+[[nodiscard]] CORE_EXPORT const std::string& exe_path();
+[[nodiscard]] CORE_EXPORT const std::string& exe_dir();
+[[nodiscard]] CORE_EXPORT const std::string& resources_dir();
+[[nodiscard]] CORE_EXPORT bool is_executable_in_path(const char* path);
+[[nodiscard]] CORE_EXPORT Files list_files(const std::string& path);
+[[nodiscard]] CORE_EXPORT std::string parent_dir(const std::string& path);
+[[nodiscard]] CORE_EXPORT std::string base_name(const std::string& path);
+[[nodiscard]] CORE_EXPORT std::string temp_directory();
+[[nodiscard]] CORE_EXPORT std::string temp_path(const std::string& prefix);
+CORE_EXPORT bool compress(const char* src_path,
+                          const char* dest_path,
+                          bool remove_after_compress = true);
+
 CORE_EXPORT int create_directory(const char* path);
 CORE_EXPORT int create_directories(const char* path);
 CORE_EXPORT int create_file(const char* path);
 CORE_EXPORT int remove_file(const char* path);
 CORE_EXPORT int remove_directory(const char* path);
 CORE_EXPORT int rename_file(const char* old_path, const char* new_path);
-CORE_EXPORT std::string temp_directory();
-CORE_EXPORT std::string temp_path(const std::string& prefix);
 CORE_EXPORT int write_file(const char* path, const std::string& content);
 
 CORE_EXPORT int write_binary_to_file(const void* binary_data,
@@ -152,7 +157,7 @@ class CORE_EXPORT File {
 
   inline constexpr const std::string& file_name() const { return file_name_; }
   inline constexpr const std::string& source() const { return source_; }
-  inline const std::string& line(size_t line_no) const {
+  inline const std::string& line(std::size_t line_no) const {
 #if IS_DEBUG
     static const std::string empty = "";
     if (line_no == 0 || line_no > lines_.size()) {

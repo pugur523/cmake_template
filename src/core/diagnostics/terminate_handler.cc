@@ -2,15 +2,16 @@
 
 #include <iostream>
 
+#include "core/base/logger.h"
 #include "core/diagnostics/stack_trace.h"
 
 namespace core {
 
 void terminate_handler() {
-  std::cout << "\nProgram terminated unexpectedly\n"
-            << "Stack trace (most recent call last):\n"
-            << stack_trace_from_current_context() << "\n";
-
+  core::glog.fatal<
+      "\nProgram terminated unexpectedly\n"
+      "Stack trace (most recent call last):\n{}\n">(
+      stack_trace_from_current_context());
   std::exit(EXIT_FAILURE);
 }
 

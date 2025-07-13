@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "build/build_config.h"
+#include "core/base/logger.h"
 #include "core/cli/arg_parser.h"
 #include "core/diagnostics/stack_trace.h"
 #include "core/location.h"
@@ -45,30 +46,35 @@ int handle_arguments(int argc, char** argv) {
   }
 
   if (verbose) {
-    std::cout << "Parsed arguments:" << "\n"
-              << "  input: " << input_file << "\n"
-              << "  output: " << output_file << "\n"
-              << "  count: " << count << "\n"
-              << "  mode: " << mode << "\n"
-              << "  verbose: " << verbose << "\n"
-              << "  stacktrace: " << stacktrace << "\n"
-              << "  includes: [";
+    std::string includes_str = "[";
     for (std::size_t i = 0; i < includes.size(); i++) {
-      std::cout << includes[i];
+      includes_str.append(includes[i]);
 
       if (i < includes.size() - 1) {
-        std::cout << ", ";
+        includes_str.append(", ");
       }
     }
-    std::cout << "]";
-    std::cout << "\n";
+    includes_str.append("]");
+
+    core::glog.info<R"(Parsed arguments:
+        input: {}    
+        output: {} 
+        count: {} 
+        mode: {} 
+        verbose: {} 
+        stacktrace: {}
+        includes: {}
+)">(input_file, output_file, count, mode, verbose, stacktrace, includes_str);
   }
 
   if (stacktrace) {
-    constexpr std::size_t kBufSize = 16384;
-    char buf[kBufSize];
-    core::stack_trace_from_current_context(buf, kBufSize);
-    std::cout << FROM_HERE << '\n' << buf << '\n';
+    constexpr std::size_t kBufSize = 4096;
+
+    char location_buf[kBufSize];
+    FROM_HERE.to_string(location_buf, kBufSize);
+
+    std::string stacktrace = core::stack_trace_from_current_context();
+    core::glog.info<"{}\n{}">(location_buf, stacktrace);
   }
 
   return 0;

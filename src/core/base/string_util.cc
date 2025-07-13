@@ -2,10 +2,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <charconv>
+#include <cstring>
 #include <cuchar>
 #include <queue>
 #include <string>
+#include <vector>
 
 namespace core {
 
@@ -24,71 +27,111 @@ constexpr std::array<int8_t, 256> make_bracket_table() {
   return map;
 }
 
-}  // namespace
+void encode_escape_impl(std::string_view input, std::string* out) {
+  const std::size_t max_size = input.size() * 2;  // worst case
+  out->clear();
+  out->reserve(max_size);
 
-std::string encode_escape(const std::string& input) {
-  std::string encoded;
-  const std::size_t max_size = input.size() * 2;
-  encoded.reserve(max_size);
+  out->resize(max_size);
+  char* write_ptr = out->data();
+  char* begin = write_ptr;
 
-  char* write_ptr = encoded.data();
-  std::size_t actual_size = input.size();
   for (char c : input) {
     switch (c) {
       case '\n':
         *write_ptr++ = '\\';
         *write_ptr++ = 'n';
-        actual_size++;
         break;
       case '\r':
         *write_ptr++ = '\\';
         *write_ptr++ = 'r';
-        actual_size++;
         break;
       case '\t':
         *write_ptr++ = '\\';
         *write_ptr++ = 't';
-        actual_size++;
         break;
       case '\\':
         *write_ptr++ = '\\';
         *write_ptr++ = '\\';
-        actual_size++;
         break;
       default: *write_ptr++ = c; break;
     }
   }
-  encoded.resize(actual_size);
+
+  out->resize(static_cast<std::size_t>(write_ptr - begin));
+}
+
+void decode_escape_impl(std::string_view input, std::string* out) {
+  const std::size_t max_size = input.size();  // worst case
+  out->clear();
+  out->reserve(max_size);
+
+  out->resize(max_size);
+  char* write_ptr = out->data();
+  char* begin = write_ptr;
+
+  for (std::size_t i = 0; i < input.size(); i++) {
+    if (input[i] == '\\') {
+      if (i < input.size() - 1) {
+        switch (input[i + 1]) {
+          case 'n':
+            *write_ptr++ = '\n';
+            i++;
+            break;
+          case 'r':
+            *write_ptr++ = '\r';
+            i++;
+            break;
+          case 't':
+            *write_ptr++ = '\t';
+            i++;
+            break;
+          case '\\':
+            *write_ptr++ = '\\';
+            i++;
+            break;
+          default: *write_ptr++ = input[i]; break;
+        }
+      } else {
+        *write_ptr++ = input[i];
+      }
+    } else {
+      *write_ptr++ = input[i];
+    }
+  }
+
+  out->resize(static_cast<std::size_t>(write_ptr - begin));
+}
+
+}  // namespace
+
+std::string encode_escape(std::string_view input) {
+  std::string encoded;
+  encode_escape_impl(input, &encoded);
   return encoded;
 }
 
-std::string decode_escape(const std::string& input) {
-  std::string decoded;
-  const std::size_t max_size = input.size();
-  decoded.reserve(max_size);
+std::string encode_escape(const char* s, std::size_t len) {
+  return encode_escape(std::string_view(s, len));
+}
 
-  char* write_ptr = decoded.data();
-  std::size_t actual_size = input.size();
-  for (std::size_t i = 0; i < input.size(); ++i) {
-    switch (input[i]) {
-      case '\\':
-        if (i < input.size() - 1) {
-          switch (input[i + 1]) {
-            case 'n': *write_ptr++ = '\n'; break;
-            case 'r': *write_ptr++ = '\r'; break;
-            case 't': *write_ptr++ = '\t'; break;
-            case '\\': *write_ptr++ = '\\'; break;
-            default: *write_ptr++ = input[i + 1]; break;
-          }
-          actual_size++;
-          i++;
-          break;
-        }
-      default: *write_ptr++ = input[i]; break;
-    }
-  }
-  decoded.resize(actual_size);
+std::string decode_escape(std::string_view input) {
+  std::string decoded;
+  decode_escape_impl(input, &decoded);
   return decoded;
+}
+
+std::string decode_escape(const char* s, std::size_t len) {
+  return decode_escape(std::string_view(s, len));
+}
+
+void to_lower(char* input, std::size_t len) {
+  if (!input) {
+    return;
+  }
+  for (std::size_t i = 0; i < len; i++) {
+    input[i] = to_lower(input[i]);
+  }
 }
 
 void to_lower(char* input) {
@@ -96,7 +139,7 @@ void to_lower(char* input) {
     return;
   }
   for (char* p = input; *p != '\0'; ++p) {
-    *p = static_cast<char>(std::tolower(static_cast<unsigned char>(*p)));
+    *p = to_lower(*p);
   }
 }
 
@@ -104,23 +147,29 @@ void to_lower(std::string* input) {
   if (!input) {
     return;
   }
-  std::transform(
-      input->begin(), input->end(), input->begin(),
-      [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  for (char& c : *input) {
+    c = to_lower(c);
+  }
 }
 
 std::string to_lower(const std::string& input) {
   std::string result;
-  result.reserve(input.size());
-
-  char* write_ptr = result.data();
-
-  for (char c : input) {
-    *write_ptr++ =
-        static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-  }
   result.resize(input.size());
+
+  for (std::size_t i = 0; i < input.size(); ++i) {
+    result[i] = to_lower(input[i]);
+  }
+
   return result;
+}
+
+void to_upper(char* input, std::size_t len) {
+  if (!input) {
+    return;
+  }
+  for (std::size_t i = 0; i < len; i++) {
+    input[i] = to_upper(input[i]);
+  }
 }
 
 void to_upper(char* input) {
@@ -128,7 +177,7 @@ void to_upper(char* input) {
     return;
   }
   for (char* p = input; *p != '\0'; ++p) {
-    *p = static_cast<char>(std::toupper(static_cast<unsigned char>(*p)));
+    *p = to_upper(*p);
   }
 }
 
@@ -136,21 +185,19 @@ void to_upper(std::string* input) {
   if (!input) {
     return;
   }
-  std::transform(
-      input->begin(), input->end(), input->begin(),
-      [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+  for (char& c : *input) {
+    c = to_upper(c);
+  }
 }
 
 std::string to_upper(const std::string& input) {
   std::string result;
-  result.reserve(input.size());
-  char* write_ptr = result.data();
-
-  for (char c : input) {
-    *write_ptr++ =
-        static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-  }
   result.resize(input.size());
+
+  for (std::size_t i = 0; i < input.size(); ++i) {
+    result[i] = to_upper(input[i]);
+  }
+
   return result;
 }
 
@@ -230,16 +277,17 @@ std::queue<std::string> split_string(const std::string& input,
   return result;
 }
 
-std::string remove_bracket(const std::string& input) {
+std::string remove_bracket(const std::string& input,
+                           std::size_t max_nest_size) {
   if (input.empty()) {
     return {};
   }
 
   std::string output;
+  output.reserve(input.size());
   output.resize(input.size());
 
-  constexpr std::size_t kMaxNestSize = 32;
-  char stack[kMaxNestSize];
+  std::vector<char> stack(std::min(input.size() / 2, max_nest_size));
   std::size_t depth = 0;
   char* write_ptr = output.data();
 
@@ -256,13 +304,20 @@ std::string remove_bracket(const std::string& input) {
 
     if (bracket_type > 0) {
       // Opening bracket
-      if (depth < kMaxNestSize) {
+      if (depth < max_nest_size) {
         stack[depth++] = bracket_type;
+      } else {
+        depth++;
       }
     } else if (bracket_type < 0) {
       // Closing bracket
-      if (depth > 0 && stack[depth - 1] == -bracket_type) {
-        --depth;
+      if (depth > 0) {
+        if (depth <= max_nest_size && stack[depth - 1] == -bracket_type) {
+          --depth;
+        } else if (depth > max_nest_size) {
+          --depth;
+        } else {
+        }
       }
     } else if (depth == 0) {
       // Not a bracket and not inside brackets

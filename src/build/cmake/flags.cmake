@@ -1,12 +1,12 @@
 macro(setup_windows_flags)
-  # Enable color and use libc++
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics -fdiagnostics-color=always" PARENT_SCOPE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics -fdiagnostics-color=always" PARENT_SCOPE)
+  # Enable color
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics -fdiagnostics-color=always")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics -fdiagnostics-color=always")
 
   # Base flags - enable warnings
   list(APPEND PROJECT_COMPILE_OPTIONS /W4 /clang:-Wall /clang:-Wextra /clang:-Wpedantic)
 
-  if(WARNINGS_AS_ERRORS)
+  if(ENABLE_WARNINGS_AS_ERRORS)
     list(APPEND PROJECT_COMPILE_OPTIONS /WX /clang:-Werror)
   endif()
 
@@ -17,13 +17,14 @@ macro(setup_windows_flags)
   set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /DEBUG")
 
   # Release configuration
-  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /DNDEBUG /Gw /Gy /Zc:dllexportInlines- /clang:-fno-exceptions")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /DNDEBUG /Gw /Gy /Zc:dllexportInlines- /clang:-fno-exceptions")
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /DNDEBUG /Gw /Gy /Zc:dllexportInlines- /clang:-fno-exceptions /clang:-funroll-loops")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /DNDEBUG /Gw /Gy /Zc:dllexportInlines- /clang:-fno-exceptions /clang:-funroll-loops")
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /permissive- /Zc:__cplusplus /Zc:inline /Zc:strictStrings /Zc:alignedNew /Zc:sizedDealloc /Zc:threadSafeInit")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /permissive- /Zc:__cplusplus /Zc:inline /Zc:strictStrings /Zc:alignedNew /Zc:sizedDealloc /Zc:threadSafeInit")
 
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+  # set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
   # Link time optimization
   if(ENABLE_LTO)
@@ -49,17 +50,19 @@ macro(setup_windows_flags)
   endif()
 
   list(APPEND WINDOWS_LINK_LIBRARIES "dbghelp")
+
+  list(APPEND PROJECT_COMPILE_DEFINITIONS NOMINMAX=1)
 endmacro()
 
 macro(setup_unix_flags)
   # Enable color and use libc++
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=always")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -stdlib=libc++")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=always -fPIC")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -stdlib=libc++ -fPIC")
 
   # Base flags - enable warnings
   list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -fno-common)
 
-  if(WARNINGS_AS_ERRORS)
+  if(ENABLE_WARNINGS_AS_ERRORS)
     list(APPEND PROJECT_COMPILE_OPTIONS -Werror)
   endif()
 
@@ -68,8 +71,8 @@ macro(setup_unix_flags)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -fno-inline -fmacro-backtrace-limit=0 -frtti -fno-omit-frame-pointer -funwind-tables")
 
   # Release configuration
-  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -ffunction-sections -fdata-sections -fstack-protector-strong -D_FORTIFY_SOURCE=2 -ftrivial-auto-var-init=zero -fno-rtti -fomit-frame-pointer -fno-exceptions")
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffunction-sections -fdata-sections -fstack-protector-strong -D_FORTIFY_SOURCE=2 -ftrivial-auto-var-init=zero -fno-rtti -fomit-frame-pointer -fno-exceptions")
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -ffunction-sections -fdata-sections -fstack-protector-strong -D_FORTIFY_SOURCE=2 -ftrivial-auto-var-init=zero -fno-rtti -fomit-frame-pointer -fno-exceptions -funroll-loops")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffunction-sections -fdata-sections -fstack-protector-strong -D_FORTIFY_SOURCE=2 -ftrivial-auto-var-init=zero -fno-rtti -fomit-frame-pointer -fno-exceptions -funroll-loops")
 
   # Avoid mingw
   if(NOT MINGW_BUILD)
@@ -102,7 +105,7 @@ macro(setup_unix_flags)
     if(TARGET_OS_NAME MATCHES "darwin")
       # for macos (ld64.lld)
       set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -Wl,-dead_strip -Wl,-x")
-      set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -Wl,-dead_strip")
+      set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,-dead_strip")
     else()
       set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -Wl,--gc-sections -Wl,--strip-all")
       set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
@@ -170,9 +173,9 @@ macro(setup_common_flags)
       list(APPEND PROJECT_LINK_OPTIONS -fxray-shared)
     endif()
 
-    add_compile_definitions(ENABLE_XRAY=1)
+    list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_XRAY=1)
   else()
-    add_compile_definitions(ENABLE_XRAY=0)
+    list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_XRAY=0)
   endif()
 
   if(ENABLE_AVX2)
@@ -189,8 +192,7 @@ macro(setup_common_flags)
           __m256i a = _mm256_set1_epi32(1);
           __m256i b = _mm256_add_epi32(a, a);
           return 0;
-      }
-    ")
+      }")
 
       set(CMAKE_REQUIRED_FLAGS "-mavx2")
       check_cxx_source_runs("${AVX2_TEST_CODE}" HAS_AVX2)
@@ -198,14 +200,14 @@ macro(setup_common_flags)
 
     if(HAS_AVX2)
       message(STATUS "AVX2 support detected")
-      add_compile_definitions(ENABLE_AVX2=1)
+      list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_AVX2=1)
       list(APPEND PROJECT_COMPILE_OPTIONS -mavx2)
     else()
-      add_compile_definitions(ENABLE_AVX2=0)
+      list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_AVX2=0)
       message(STATUS "AVX2 support not available")
     endif()
   else()
-    add_compile_definitions(ENABLE_AVX2=0)
+    list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_AVX2=0)
   endif()
 endmacro()
 

@@ -36,6 +36,9 @@ It leverages LLVM tools to provide a lightweight, highly optimized C/C++ build s
   - [Customize Build Arguments](#customize-build-arguments)
   - [Profile Performance of Your Program](#profile-performance-of-your-program)
 - [Distributing Build Artifacts](#distributing-build-artifacts)
+- [Projects Using This Template](#projects-using-this-template)
+
+</details>
 
 ## Features
 
@@ -58,8 +61,6 @@ The following libraries are included as submodules by default so you can start d
 |      [**toml11**](https://github.com/ToruNiina/toml11)      | TOML parser/reader, ideal for configs                  |
 
 If you do not need these libraries, please refer to [How to Manage Libraries](#how-to-manage-libraries) and remove them from your project.<br/>
-
-</details>
 
 ## Getting Started
 
@@ -226,8 +227,8 @@ After installing all the dependencies above, make sure they are in your PATH.
     ```shell
     $ sudo dpkg --add-architecture i386
     $ sudo apt-get update && sudo apt-get install -y nsis wine wine32
-    $ echo $(./src/build/scripts/install_llvm_mingw.sh) >> ~/.bashrc
-    $ source ~/.bashrc
+    $ source ./src/build/scripts/install_llvm_mingw.sh
+    $ echo "LLVM_MINGW_DIR=${LLVM_MINGW_DIR}" >> $HOME/.bashrc
     ```
 
 </details>
@@ -370,7 +371,7 @@ Reverse the above steps and remove all related parts for that library.
 
 ### How to Add a Module
 
-The [core](src/core) module is included by default. To add a new module, create a directory under `//src/`, copy the [CMakeLists.txt](src/core/CMakeLists.txt) from core, change `MODULE_NAME` and `MODULE_OBJECTS_NAME`, and set the list of source files in `SOURCES` as needed. By changing the arguments passed to `setup_module`, you can set include directories, link directories, compile options, link options, and link libraries for the module. You can also specify whether to build the library as static or shared with `"-D BUILD_SHARED=<true|false>"` and `"-D BUILD_<UPPER_MODULE_NAME>_SHARED=<true|false>"`. For example, to build core as a static library, use `"-D BUILD_CORE_SHARED=false"`.
+The [core](src/core) module is included by default. To add a new module, create a directory under `//src/`, copy the [CMakeLists.txt](src/core/CMakeLists.txt) from core, change `MODULE_NAME` and `MODULE_OBJECTS_NAME`, and set the list of source files in `SOURCES` as needed. By changing the arguments passed to `setup_module`, you can set include directories, link directories, compile options, link options, and link libraries for the module. You can also specify whether to build the library as static or shared with `"-D ENABLE_BUILD_SHARED=<true|false>"` and `"-D BUILD_<UPPER_MODULE_NAME>_SHARED=<true|false>"`. For example, to build core as a static library, use `"-D BUILD_CORE_SHARED=false"`.
 
 ### Customize Build Arguments
 
@@ -450,7 +451,7 @@ $ python3 ./src/build/scripts/build.py \
 
 ```shell
 $ python3 ./src/build/scripts/build.py \
-    --extra_args="-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTS_POST_BUILD=true"
+    --extra_args="-D ENABLE_XRAY=true,-D ENABLE_SANITIZERS=false,-D ENABLE_COVERAGE=true,-D ENABLE_RUN_APP_POST_BUILD=true,-D ENABLE_RUN_TESTING_POST_BUILD=true"
 ```
 
 </details>
@@ -471,3 +472,8 @@ Additionally, installers packaged from these artifacts are generated in the `//o
 
 To distribute your application, release the installer files such as `.exe`, `.zip`, `.tar.gz`, `.deb`, or `.dmg` found in the latter directory.
 Users can download the installer appropriate for their environment and install the build artifacts using the standard method for each format.
+
+## Projects Using This Template
+|                   Project Name                   | Description                       |
+| :----------------------------------------------: | :-------------------------------- |
+| [femtolog](https://github.com/pugur523/femtolog) | An ultra fast c++ logging library |

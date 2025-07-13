@@ -80,15 +80,15 @@ def build_with_all_option_combinations(
     }
 
     common_args = [
-        "-DBUILD_SHARED=true",
-        "-DBUILD_TESTING=true",
-        "-DBUILD_BENCHMARK=true",
-        "-DINSTALL_TESTING=false",
-        "-DINSTALL_BENCHMARK=false",
+        "-DENABLE_BUILD_SHARED=true",
+        "-DENABLE_BUILD_TESTING=true",
+        "-DENABLE_BUILD_BENCHMARK=true",
+        "-DENABLE_INSTALL_TESTING=false",
+        "-DENABLE_INSTALL_BENCHMARK=false",
         "-DENABLE_RUN_PROGRAM_POST_BUILD=false",
-        "-DENABLE_RUN_TESTS_POST_BUILD=false",
-        "-DENABLE_RUN_BENCHMARKS_POST_BUILD=false",
-        "-DWARNINGS_AS_ERRORS=true",
+        "-DENABLE_RUN_TESTING_POST_BUILD=false",
+        "-DENABLE_RUN_BENCHMARK_POST_BUILD=false",
+        "-DENABLE_WARNINGS_AS_ERRORS=true",
         "-DENABLE_LTO=true",
         "-DENABLE_XRAY=false",
         "-DENABLE_NATIVE_ARCH=true",
@@ -303,14 +303,11 @@ def build_project(
     package_command = ["cmake", "--build", build_dir, "--target", "package"]
 
     if build_async:
-        parallel_command = ["--parallel", os.cpu_count or 4]
+        parallel_command = ["--parallel", str(int((os.cpu_count() or 4) / 2))]
         build_command.extend(parallel_command)
         package_command.extend(parallel_command)
 
-    result = run_command(
-        configure_command,
-        cwd=project_root_dir,
-    )
+    result = run_command(configure_command, cwd=project_root_dir)
     if result.returncode != 0:
         print("cmake configure failed: ", result.returncode)
         return result.returncode
@@ -441,7 +438,7 @@ def main(argv):
 
     start_time = time()
 
-    successfull_configs = []
+    successful_configs = []
     failed_configs = []
 
     build_tasks = list(product(target_platforms, target_archs, target_build_types))
@@ -474,7 +471,8 @@ def main(argv):
 
             return result, config_entry
 
-        with ThreadPoolExecutor(max_workers=int(os.cpu_count() or 4 / 2)) as executor:
+        with ThreadPoolExecutor(max_workers=int((os.cpu_count() or 4) / 2)) as executor:
+
             results = list(executor.map(build_helper, build_tasks))
         for result, entry in results:
             if result != 0:
@@ -484,7 +482,7 @@ def main(argv):
                     failed_configs.append(entry)
                     continue
             else:
-                successfull_configs.append(entry)
+                successful_configs.append(entry)
     else:
         for target_platform, target_arch, build_type in build_tasks:
             if target_platform == "mingw":
@@ -511,11 +509,11 @@ def main(argv):
                 else:
                     failed_configs.append(config_entry)
                     continue
-            successfull_configs.append(config_entry)
+            successful_configs.append(config_entry)
 
-    if successfull_configs:
-        print("\nSuccessfull Builds:")
-        print(tabulate(successfull_configs, headers="keys", tablefmt="grid"))
+    if successful_configs:
+        print("\nsuccessful Builds:")
+        print(tabulate(successful_configs, headers="keys", tablefmt="grid"))
 
     if failed_configs:
         print("\nFailed Builds:")

@@ -1,12 +1,15 @@
 /out
 /venv
-
+.cache
+compile_commands.json
 __pycache__
 *.log
 *.profraw
 *.xz
 *.gz
 *.zip
+*Zone.Identifier
+.vscode/
 
 # Prerequisites
 *.d

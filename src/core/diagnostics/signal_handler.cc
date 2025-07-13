@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "build/build_flag.h"
+#include "core/base/logger.h"
 #include "core/diagnostics/stack_trace.h"
 #include "core/time/time_util.h"
 
@@ -52,12 +53,20 @@ const char* signal_to_string(int signal_number) {
 void signal_handler(int signal_number) {
   TimeUtil time_util;
   std::time_t now = time_util.unix_time();
-  std::cout << "Aborted at " << std::ctime(&now) << "\n"
-            << "(" << now << " in unix time)\n"
-            << signal_to_string(signal_number) << " received by PID "
-            << get_pid() << "(TID " << std::this_thread::get_id() << ")\n"
-            << stack_trace_from_current_context() << "\n";
 
+  static thread_local uint32_t cached_tid = []() noexcept -> uint32_t {
+    const auto tid = std::this_thread::get_id();
+    const auto hash_val = std::hash<std::thread::id>{}(tid);
+
+    // Ensure non-zero ID for better performance characteristics
+    return static_cast<uint32_t>(hash_val) | 1;
+  }();
+  core::glog.fatal<
+      "Aborted at {} \n"
+      "({} in unix time)\n"
+      "{} received by PID {} (TID {})\n{}">(
+      std::ctime(&now), now, signal_to_string(signal_number), get_pid(),
+      cached_tid, stack_trace_from_current_context());
   std::exit(EXIT_FAILURE);
 }
 

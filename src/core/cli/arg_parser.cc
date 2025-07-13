@@ -9,6 +9,7 @@
 
 #include "build/build_config.h"
 #include "core/base/file_util.h"
+#include "core/base/logger.h"
 #include "core/base/string_util.h"
 
 namespace core {
@@ -207,52 +208,79 @@ ParseResult ArgumentParser::parse(int argc, char** argv) {
 }
 
 void ArgumentParser::print_warn(const std::string& message) const {
-  std::cerr << program_name_ << ": " << kRed << kBold << "warn: " << kReset
-            << kBold << message << kReset << "\n";
+  glog.warn<"{}{}{}\n">(kBold, message, kReset);
 }
 
 void ArgumentParser::print_error(const std::string& message) const {
-  std::cerr << program_name_ << ": " << kRed << kBold << "error: " << kReset
-            << kBold << message
-            << "\nUse '-h' or '--help' to show the help message" << kReset
-            << "\n";
+  glog.error<
+      "{}{}{}\n"
+      "Use '-h' or '--help' to show the help "
+      "message\n">(kBold, message, kReset);
 }
 
 void ArgumentParser::print_help() const {
-  std::cout << "Usage: " << program_name_;
+  std::string help_str = "";
+
+  std::string usage_str = "Usage: ";
+  usage_str.append(program_name_);
   for (const auto& name : option_order_) {
     const auto& opt = options_.at(name);
-    std::cout << (opt->is_required() ? " " : " [") << "--" << name;
+    usage_str.append(opt->is_required() ? " --" : " [--");
+    usage_str.append(name);
     if (opt->has_value()) {
-      std::cout << "=<value>";
+      usage_str.append("=<value>");
     }
-    std::cout << (opt->is_required() ? "" : "]");
+    if (!opt->is_required()) {
+      usage_str.push_back(']');
+    }
   }
-  for (std::size_t i = 0; i < positional_names_.size(); ++i) {
-    std::cout << (positional_required_[i] ? " " : " [") << positional_names_[i]
-              << (positional_required_[i] ? "" : "]");
+  for (std::size_t i = 0; i < positional_names_.size(); i++) {
+    if (positional_required_[i]) {
+      usage_str.push_back(' ');
+      usage_str.append(positional_names_[i]);
+    } else {
+      usage_str.append(" [");
+      usage_str.append(positional_names_[i]);
+      usage_str.push_back(']');
+    }
   }
-  std::cout << "\n\n" << description_ << "\n";
+  help_str.append(usage_str);
+  help_str.append("\n\n");
+  help_str.append(description_);
+  help_str.push_back('\n');
+
   if (!positional_names_.empty()) {
-    std::cout << "\nPositional arguments:\n";
+    std::string positional_str = "Positional arguments:\n";
     for (std::size_t i = 0; i < positional_names_.size(); ++i) {
-      std::cout << "  " << std::left << std::setw(20) << positional_names_[i]
-                << positional_descriptions_[i];
+      constexpr std::size_t kPositionalArgStrSize = 128;
+      std::string positional_buf;
+      positional_buf.reserve(kPositionalArgStrSize);
+      positional_buf.append("  ");
+      positional_buf.append(positional_names_[i]);
+
+      const std::size_t padding_size = 25 - positional_names_[i].size();
+      positional_buf.append(std::string(padding_size, ' '));
+
+      positional_buf.append(positional_descriptions_[i]);
       if (positional_required_[i]) {
-        std::cout << " (required)";
+        positional_buf.append(" (required)");
       }
-      std::cout << "\n";
+      positional_buf.push_back('\n');
+      positional_str.append(positional_buf);
     }
+    help_str.push_back('\n');
+    help_str.append(positional_str);
   }
   if (!option_order_.empty()) {
-    std::cout << "\nOptions:\n";
+    std::string options_str = "Options:\n";
     std::unordered_map<std::string, std::vector<std::string>> reverse_aliases;
     for (const auto& pair : aliases_) {
       reverse_aliases[pair.second].push_back(pair.first);
     }
     for (const auto& name : option_order_) {
       const auto& opt = options_.at(name);
-      std::string display = "";
+      std::string display;
+      display.reserve(reverse_aliases[name].size() * 12);
       bool first = true;
       for (int i = reverse_aliases[name].size() - 1; i >= 0; i--) {
         const std::string alias = reverse_aliases[name][i];
@@ -276,34 +304,69 @@ void ArgumentParser::print_help() const {
       if (opt->has_value()) {
         display.append("=<value>");
       }
-      std::cout << "  " << std::left << std::setw(25) << display
-                << opt->description();
+
+      constexpr std::size_t kOptionsArgStrSize = 128;
+      std::string options_buf;
+      options_buf.reserve(kOptionsArgStrSize);
+      options_buf.append("  ");
+      options_buf.append(display);
+
+      const std::size_t padding_size = 25 - display.size();
+      options_buf.append(std::string(padding_size, ' '));
+
+      options_buf.append(opt->description());
+
       if (opt->has_default()) {
-        std::cout << " (default: " << opt->default_value_str() << ")";
+        options_buf.append(" (default: ");
+        options_buf.append(opt->default_value_str());
+        options_buf.append(")");
       }
+
       if (opt->is_required()) {
-        std::cout << " (required)";
+        options_buf.append(" (required)");
       }
-      std::cout << "\n";
+
+      options_buf.push_back('\n');
+      options_str.append(options_buf);
     }
-    std::cout << "  " << std::left << std::setw(25) << "-v, --version"
-              << "Show version information\n";
-    std::cout << "  " << std::left << std::setw(25) << "-h, --help"
-              << "Show this help message\n";
+    help_str.push_back('\n');
+    help_str.append(options_str);
+
+    {
+      help_str.append("  ");
+      const std::string v_str = "-v, --version";
+      help_str.append(v_str);
+      const std::size_t v_padding_size = 25 - v_str.size();
+      help_str.append(std::string(v_padding_size, ' '));
+      help_str.append("Show version information\n");
+
+      help_str.append("  ");
+      const std::string h_str = "-h, --help";
+      help_str.append(h_str);
+      const std::size_t h_padding_size = 25 - h_str.size();
+      help_str.append(std::string(h_padding_size, ' '));
+      help_str.append("Show this help message\n");
+    }
   }
+  core::glog.info<"{}">(help_str);
 }
 
 void ArgumentParser::print_version() const {
-  std::cout << BUILD_NAME " version " BUILD_VERSION " (" BUILD_TYPE ")\n"
-            << "Build Platform: " BUILD_PLATFORM " - " BUILD_ARCH << "\n"
-            << "Target Platform: " TARGET_PLATFORM " - " << TARGET_ARCH "\n"
-            << "Target Bits: " TARGET_BITS "\n"
-            << "Build Compiler: " BUILD_COMPILER "\n"
-            << "Installed Directory: " << get_exe_dir() << "\n"
-            << "Build Time: " BUILD_TIME "\n"
-            << "Commit Hash: " BUILD_GIT_COMMIT_HASH "\n";
-
-  std::cout << std::flush;
+  core::glog
+      .info<BUILD_NAME " version " BUILD_VERSION " (" BUILD_TYPE
+                       ")\n"
+                       "Build Platform: " BUILD_PLATFORM " - " BUILD_ARCH
+                       "\n"
+                       "Target Platform: " TARGET_PLATFORM " - " TARGET_ARCH
+                       "\n"
+                       "Target Bits: " TARGET_BITS
+                       "\n"
+                       "Build Compiler: " BUILD_COMPILER
+                       "\n"
+                       "Installed Directory: {}\n"
+                       "Build Time: " BUILD_TIME
+                       "\n"
+                       "Commit Hash: " BUILD_GIT_COMMIT_HASH "\n">(exe_dir());
 }
 
 }  // namespace core
