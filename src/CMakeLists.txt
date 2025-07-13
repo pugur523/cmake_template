@@ -63,14 +63,14 @@ option(ENABLE_LTO "enable link time optimization" TRUE)
 option(ENABLE_NATIVE_ARCH "enable optimization for native architecture" TRUE)
 
 option(ENABLE_BUILD_REPORT "generate the report for optimization, build time, etc." TRUE)
-option(ENABLE_COVERAGE "enable coverage using -fprofile-instr-generate and llvm-cov. runs main app and test on post build if available." TRUE)
-option(ENABLE_OPTIMIZATION_REPORT "generate optimization report" TRUE)
-option(ENABLE_XRAY "enable llvm-xray. not compatible with windows build, debug build, address sanitizers. runs main app and test on post build if available." TRUE)
-option(ENABLE_SANITIZERS "enable address and undefined sanitizers" TRUE)
-option(ENABLE_LLVM_UNWIND "enable llvm libunwind to fetch stacktrace" TRUE)
+option(ENABLE_COVERAGE "enable coverage using -fprofile-instr-generate and llvm-cov. runs main app and test on post build if available." FALSE)
+option(ENABLE_OPTIMIZATION_REPORT "generate optimization report" FALSE)
+option(ENABLE_XRAY "enable llvm-xray. not compatible with windows build, debug build, address sanitizers. runs main app and test on post build if available." FALSE)
+option(ENABLE_SANITIZERS "enable address and undefined sanitizers" FALSE)
+option(ENABLE_LLVM_UNWIND "enable llvm libunwind to fetch stacktrace" FALSE)
 option(ENABLE_AVX2 "enable avx2 if available" TRUE)
 
-option(ENABLE_WARNINGS_AS_ERRORS "treat warnings as errors" TRUE)
+option(ENABLE_WARNINGS_AS_ERRORS "treat warnings as errors" FALSE)
 
 if(ENABLE_OPTIMIZATION_REPORT AND HOST_OS_NAME MATCHES "windows")
   message(WARNING "ENABLE_OPTIMIZATION_REPORT on Windows build is not supported.\n"

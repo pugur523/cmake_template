@@ -70,7 +70,7 @@ jobs:
         -DENABLE_BUILD_TESTING=true,
         -DENABLE_RUN_PROGRAM_POST_BUILD=false,
         -DENABLE_RUN_BENCHMARK_POST_BUILD=false,
-        -DENABLE_RUN_TESTING_POST_BUILD=false
+        -DENABLE_RUN_TESTING_POST_BUILD=false,
 
     steps:
       - name: Checkout repository

@@ -380,13 +380,13 @@ def main(argv):
     parser.add_argument(
         "--install",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="install post build",
     )
     parser.add_argument(
         "--package",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="create package post build",
     )
     parser.add_argument(
