@@ -356,22 +356,20 @@ void ArgumentParser::print_help() const {
   core::glog.info<"{}">(help_str);
 }
 
-void ArgumentParser::print_version() const {
-  core::glog
-      .info<BUILD_NAME " version " BUILD_VERSION " (" BUILD_TYPE
-                       ")\n"
-                       "Build Platform: " BUILD_PLATFORM " - " BUILD_ARCH
-                       "\n"
-                       "Target Platform: " TARGET_PLATFORM " - " TARGET_ARCH
-                       "\n"
-                       "Target Bits: " TARGET_BITS
-                       "\n"
-                       "Build Compiler: " BUILD_COMPILER
-                       "\n"
-                       "Installed Directory: {}\n"
-                       "Build Time: " BUILD_TIME
-                       "\n"
-                       "Commit Hash: " BUILD_GIT_COMMIT_HASH "\n">(exe_dir());
+// static
+void ArgumentParser::print_version() {
+  core::glog.info<R"(
+    {} version {} ({})
+    Build Platform: {} - {}
+    Target Platform: {} - {}
+    Target Bits: {}
+    Build Compiler: {}
+    Installed Directory: {}
+    Build Time: {}
+    Commit Hash: {}
+)">(BUILD_NAME, BUILD_VERSION, BUILD_TYPE, BUILD_PLATFORM, BUILD_ARCH,
+    TARGET_PLATFORM, TARGET_ARCH, TARGET_BITS, BUILD_COMPILER, exe_dir(),
+    BUILD_TIME, BUILD_GIT_COMMIT_HASH);
 }
 
 }  // namespace core

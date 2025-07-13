@@ -98,7 +98,7 @@ class CORE_EXPORT ArgumentParser {
   ParseResult parse(int argc, char** argv);
 
   void print_help() const;
-  void print_version() const;
+  static void print_version();
 
  private:
   template <template <typename> typename ArgType, typename T>
