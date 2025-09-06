@@ -469,6 +469,12 @@ def build_project(
             print("cmake package failed: ", result.returncode)
             return result.returncode
 
+    if use_ccache:
+        result = run_command(["ccache", "-s"], cwd=project_root_dir)
+        if result.returncode != 0:
+            print("ccache stats print failed: ", result.returncode)
+            return result.returncode
+
     return 0
 
 
