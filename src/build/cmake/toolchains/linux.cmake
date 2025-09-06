@@ -3,7 +3,7 @@ set(CMAKE_SYSTEM_NAME Linux)
 # Prefer versioned LLVM tools if available
 find_program(CLANG_PATH NAMES clang-21 clang REQUIRED)
 find_program(CLANGXX_PATH NAMES clang++-21 clang++ REQUIRED)
-find_program(LLD_PATH NAMES ld.lld-21 ld.lld lld REQUIRED)
+find_program(LLD_PATH NAMES ld.lld-21 ld.lld lld-21 lld ld REQUIRED)
 find_program(LLVM_AR_PATH NAMES llvm-ar-21 llvm-ar REQUIRED)
 find_program(LLVM_RANLIB_PATH NAMES llvm-ranlib-21 llvm-ranlib REQUIRED)
 find_program(LLVM_NM_PATH NAMES llvm-nm-21 llvm-nm REQUIRED)
