@@ -85,9 +85,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ matrix.os == 'ubuntu-latest' && '~/.cache/ccache' || '' }}
-            ${{ matrix.os == 'macos-latest' && '~/Library/Caches/ccache' || '' }}
-            ${{ matrix.os == 'windows-latest' && '${{ env.LOCALAPPDATA }}\ccache' || '' }}
+            ${{ ${{ matrix.os }} == 'ubuntu-latest' && '~/.cache/ccache' || '' }}
+            ${{ ${{ matrix.os }} == 'macos-latest' && '~/Library/Caches/ccache' || '' }}
+            ${{ ${{ matrix.os }} == 'windows-latest' && '${{ env.LOCALAPPDATA }}\ccache' || '' }}
           key: ccache-${{ matrix.os }}-${{ matrix.cc }}-${{ matrix.cxx }}
 
       - name: Cache LLVM MinGW
@@ -164,7 +164,7 @@ jobs:
         run: |
           case "${{ matrix.os }}" in
             ubuntu-latest)
-              echo "CCACHE_DIR=~/.ccache" >> $GITHUB_ENV
+              echo "CCACHE_DIR=~/.cache/ccache" >> $GITHUB_ENV
               ;;
             windows-latest)
               echo "CCACHE_DIR=${{ env.LOCALAPPDATA }}\ccache" >> $GITHUB_ENV
