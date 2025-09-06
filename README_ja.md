@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%20License%20Version%202.0-red)](LICENSE)
 [![C](https://img.shields.io/badge/C-blue?logo=c)](https://www.c-language.org/)
 [![C++](https://img.shields.io/badge/C++-blue?logo=cplusplus)](https://isocpp.org/)
-[![LLVM](https://img.shields.io/badge/LLVM-21-orange?logo=llvm)](https://llvm.org/docs/index.html)
+[![LLVM](https://img.shields.io/badge/LLVM-20-orange?logo=llvm)](https://llvm.org/docs/index.html)
 [![CMake](https://img.shields.io/badge/CMake-4.0.2+-green?logo=cmake)](https://cmake.org/)
 <br/>
 [![English Readme](https://img.shields.io/badge/English%20Readme-blue)](README.md)
