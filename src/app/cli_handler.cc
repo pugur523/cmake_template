@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "build/build_config.h"
+#include "build/project_config.h"
 #include "core/base/logger.h"
 #include "core/cli/arg_parser.h"
 #include "core/diagnostics/stack_trace.h"
@@ -13,7 +13,7 @@
 namespace app {
 
 int handle_arguments(int argc, char** argv) {
-  core::ArgumentParser parser(BUILD_NAME, BUILD_DESCRIPTION);
+  core::ArgParser parser(build::kProjectName, build::kProjectDescription);
 
   std::string input_file;
   std::string output_file;
@@ -57,11 +57,11 @@ int handle_arguments(int argc, char** argv) {
     includes_str.append("]");
 
     core::glog.info<R"(Parsed arguments:
-        input: {}    
-        output: {} 
-        count: {} 
-        mode: {} 
-        verbose: {} 
+        input: {}
+        output: {}
+        count: {}
+        mode: {}
+        verbose: {}
         stacktrace: {}
         includes: {}
 )">(input_file, output_file, count, mode, verbose, stacktrace, includes_str);

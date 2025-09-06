@@ -6,7 +6,6 @@
 #include <chrono>
 #include <utility>
 
-#include "build/build_config.h"
 #include "build/build_flag.h"
 #include "core/base/logger.h"
 #include "core/check.h"
@@ -31,9 +30,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
 #include <memory>
-#include <random>
 #include <string>
 #include <vector>
 
@@ -61,51 +58,57 @@ bool dir_exists(const char* dir_name) {
 #endif
 }
 
-std::string read_file(const char* path) {
+namespace {
+
+template <typename T>
+T read_file_impl(const char* path) {
 #if IS_WINDOWS
   int fd = _open(path, _O_RDONLY | _O_BINARY);
 #else
   int fd = open(path, O_RDONLY);
 #endif
   if (fd < 0) {
-    glog.error<"Failed to open file: {} ({})\n">(path, std::strerror(errno));
-    return "";
+    glog.error_ref<"failed to open file: {} ({})\n">(path,
+                                                     std::strerror(errno));
+    return {};
   }
 
 #if IS_WINDOWS
   struct _stat64i32 st;
-  if (_fstat(fd, &st) != 0)
+  if (_fstat(fd, &st) != 0)  // NOLINT
 #else
   struct stat st;
-  if (fstat(fd, &st) != 0)
+  if (fstat(fd, &st) != 0)  // NOLINT
 #endif
   {
-    glog.error<"Failed to stat file: {} ({})\n">(path, std::strerror(errno));
+    glog.error_ref<"failed to stat file: {} ({})\n">(path,
+                                                     std::strerror(errno));
+    glog.flush();
 #if IS_WINDOWS
     _close(fd);
 #else
     close(fd);
 #endif
-    return "";
+    return {};
   }
 
-  std::string contents;
+  T result;
   if (st.st_size > 0) {
-    contents.resize(static_cast<std::size_t>(st.st_size));
+    result.resize(static_cast<std::size_t>(st.st_size));
     std::size_t total_read = 0;
     while (total_read < static_cast<std::size_t>(st.st_size)) {
 #if IS_WINDOWS
-      int bytes = _read(fd, &contents[total_read],
+      int bytes = _read(fd, &result[total_read],
                         static_cast<unsigned int>(st.st_size - total_read));
 #else
-      ssize_t bytes = read(fd, &contents[total_read], st.st_size - total_read);
+      ssize_t bytes = read(fd, &result[total_read], st.st_size - total_read);
 #endif
       if (bytes <= 0) {
         break;
       }
       total_read += static_cast<std::size_t>(bytes);
     }
-    contents.resize(total_read);
+    result.resize(total_read);
   }
 
 #if IS_WINDOWS
@@ -113,7 +116,21 @@ std::string read_file(const char* path) {
 #else
   close(fd);
 #endif
-  return contents;
+  return result;
+}
+
+}  // namespace
+
+std::vector<std::byte> read_file_bin(const char* path) {
+  return read_file_impl<std::vector<std::byte>>(path);
+}
+
+std::string read_file(const char* path) {
+  return read_file_impl<std::string>(path);
+}
+
+std::u8string read_file_utf8(const char8_t* path) {
+  return read_file_impl<std::u8string>(reinterpret_cast<const char*>(path));
 }
 
 const std::string& exe_path() {
@@ -194,7 +211,7 @@ bool is_executable_in_path(const char* path) {
 #endif
     start = end + 1;
   }
-  // Check the last path entry
+  // check the last path entry
   std::string dir = path_var.substr(start);
   std::string full_path = dir + DIR_SEPARATOR + path;
 #if IS_WINDOWS
@@ -222,7 +239,8 @@ Files list_files(const std::string& path) {
   HANDLE hFind = FindFirstFileA(search_path.c_str(), &find_data);
 
   if (hFind == INVALID_HANDLE_VALUE) {
-    glog.error<"Cannot open the directory {}\n">(path);
+    glog.error_ref<"cannot open the directory {}\n">(path);
+    glog.flush();
     return files;
   }
 
@@ -239,7 +257,8 @@ Files list_files(const std::string& path) {
 #else
   DIR* dir = opendir(path.c_str());
   if (!dir) {
-    glog.error<"Cannot open the directory {}\n">(path);
+    glog.error_ref<"cannot open the directory {}\n">(path);
+    glog.flush();
     return files;
   }
 
@@ -289,31 +308,6 @@ std::string temp_directory() {
     }
   }
   return "/tmp/";
-#endif
-}
-
-std::string temp_path(const std::string& prefix) {
-  std::string dir = temp_directory();
-
-  static constexpr char charset[] =
-      "0123456789"
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      "abcdefghijklmnopqrstuvwxyz";
-  constexpr std::size_t length = 8;
-
-  std::mt19937 rng(static_cast<unsigned>(
-      std::chrono::steady_clock::now().time_since_epoch().count()));
-  std::uniform_int_distribution<> dist(0, sizeof(charset) - 2);
-
-  std::string suffix = PROJECT_NAME "_";
-  for (std::size_t i = 0; i < length; ++i) {
-    suffix += charset[dist(rng)];
-  }
-
-#if IS_WINDOWS
-  return dir + prefix + suffix + ".tmp";
-#else
-  return dir + prefix + suffix;
 #endif
 }
 
@@ -383,8 +377,9 @@ int create_directories(const char* path) {
 
     if (!dir.empty() && !dir_exists(dir.c_str())) {
       if (create_directory(dir.c_str()) != 0) {
-        glog.error<"Failed to create the directory {}\n">(dir);
-        result++;
+        glog.error_ref<"failed to create the directory {}\n">(dir);
+        glog.flush();
+        ++result;
       }
     }
   }
@@ -395,12 +390,14 @@ int create_directories(const char* path) {
 int create_file(const char* path) {
 #if IS_WINDOWS
   FILE* fp = nullptr;
-  fopen_s(&fp, path, "wx");  // "w"=write, "x"=fail if exists
+  // "w" = write, "x" = fail if exists
+  fopen_s(&fp, path, "wx");
   if (!fp) {
     return -1;
   }
 #else
-  FILE* fp = fopen(path, "wx");  // POSIX: 'x' = exclusive (fail if exists)
+  // posix: 'x' = exclusive (fail if exists)
+  FILE* fp = fopen(path, "wx");
   if (!fp) {
     return -1;
   }
@@ -442,8 +439,9 @@ int write_file(const char* path, const std::string& content) {
 #endif
 
   if (fd < 0) {
-    glog.error<"Failed to open file for writing {} ({})\n">(
+    glog.error_ref<"failed to open file for writing {} ({})\n">(
         path, std::strerror(errno));
+    glog.flush();
     return -1;
   }
 
@@ -459,8 +457,9 @@ int write_file(const char* path, const std::string& content) {
     ssize_t bytes = write(fd, data + total_written, size - total_written);
 #endif
     if (bytes <= 0) {
-      glog.error<"Failed to write to the file {} ({})\n">(path,
-                                                          std::strerror(errno));
+      glog.error_ref<"failed to write to the file {} ({})\n">(
+          path, std::strerror(errno));
+      glog.flush();
 #if IS_WINDOWS
       _close(fd);
 #else
@@ -483,15 +482,17 @@ int write_binary_to_file(const void* binary_data,
                          std::size_t binary_size,
                          const std::string& output_path) {
   if (!binary_data || binary_size == 0) {
-    glog.error<"Invalid data or size (null or zero) for file: {}\n">(
+    glog.error_ref<"invalid data or size (null or zero) for file: {}\n">(
         output_path);
+    glog.flush();
     return 4;
   }
 
   FILE* fp = fopen(output_path.c_str(), "wb");
   if (!fp) {
-    glog.error<"Failed to open file for writing: {} ({})\n">(
+    glog.error_ref<"failed to open file for writing: {} ({})\n">(
         output_path, std::strerror(errno));
+    glog.flush();
     return 2;
   }
 
@@ -500,9 +501,10 @@ int write_binary_to_file(const void* binary_data,
   fclose(fp);
 
   if (written != binary_size) {
-    glog.error<
-        "Failed to write all data to the file: {} (written {} / {}):\n{}">(
+    glog.error_ref<
+        "failed to write all data to the file: {} (written {} / {}):\n{}">(
         output_path, written, binary_size, std::strerror(errno));
+    glog.flush();
     return 1;
   }
 
@@ -515,10 +517,10 @@ std::string file_extension(const std::string& path) {
 
   if (last_dot == std::string::npos ||
       (last_slash != std::string::npos && last_dot < last_slash)) {
-    return "";  // No extension or dot is part of directory
+    return "";  // no extension or dot is part of directory
   }
 
-  // Handle hidden files like ".gitignore"
+  // handle hidden files like ".gitignore"
   if (last_dot == 0 ||
       (last_slash != std::string::npos && last_dot == last_slash + 1)) {
     return "";
@@ -555,12 +557,12 @@ std::string file_name_without_extension(const std::string& path) {
 std::string sanitize_component(const char* part, bool is_first) {
   std::string result = part;
 
-  // Remove leading separator if not first
+  // remove leading separator if not first
   if (!is_first && !result.empty() && result.front() == DIR_SEPARATOR) {
     result.erase(0, 1);
   }
 
-  // Remove trailing separator
+  // remove trailing separator
   if (!result.empty() && result.back() == DIR_SEPARATOR) {
     result.pop_back();
   }
@@ -568,7 +570,7 @@ std::string sanitize_component(const char* part, bool is_first) {
   return result;
 }
 
-std::vector<std::string> read_lines_default(const std::string& content) {
+std::vector<std::string> read_lines_default(std::string_view content) {
   std::vector<std::string> lines;
 
   if (content.empty()) {
@@ -589,7 +591,7 @@ std::vector<std::string> read_lines_default(const std::string& content) {
     const char* line_end = next_newline ? next_newline : end_pos;
     std::size_t line_length = line_end - current_pos;
 
-    // CRLF
+    // crlf
     if (line_length > 0 && line_end[-1] == '\r') {
       --line_length;
     }
@@ -601,9 +603,26 @@ std::vector<std::string> read_lines_default(const std::string& content) {
   return lines;
 }
 
+std::vector<std::size_t> index_newlines_default(std::string_view content) {
+  std::vector<std::size_t> indexes;
+  indexes.reserve(content.size() / 80);
+
+  for (std::size_t i = 0; i < content.size(); ++i) {
+    if (content[i] == '\n') {
+      indexes.push_back(i);
+    }
+  }
+
+  if (indexes.empty() || indexes.back() != content.size() - 1) {
+    indexes.push_back(content.size());
+  }
+
+  return indexes;
+}
+
 #if ENABLE_AVX2
 
-std::vector<std::string> read_lines_with_avx2(const std::string& content) {
+std::vector<std::string> read_lines_with_avx2(std::string_view content) {
   std::vector<std::string> lines;
 
   if (content.empty()) {
@@ -649,7 +668,7 @@ std::vector<std::string> read_lines_with_avx2(const std::string& content) {
   for (std::size_t newline_pos : newline_positions) {
     std::size_t line_length = newline_pos - line_start;
 
-    // CRLF
+    // crlf
     if (line_length > 0 && data[line_start + line_length - 1] == '\r') {
       --line_length;
     }
@@ -670,20 +689,61 @@ std::vector<std::string> read_lines_with_avx2(const std::string& content) {
   return lines;
 }
 
+std::vector<std::size_t> index_newlines_with_avx2(std::string_view content) {
+  std::vector<std::size_t> indexes;
+  indexes.reserve(content.size() / 80);
+
+  const char* data = content.data();
+  std::size_t size = content.size();
+  std::size_t pos = 0;
+
+  const __m256i newline_vec = _mm256_set1_epi8('\n');
+
+  while (pos + 32 <= size) {
+    __m256i chunk =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(data + pos));
+    __m256i cmp = _mm256_cmpeq_epi8(chunk, newline_vec);
+    uint32_t mask = _mm256_movemask_epi8(cmp);
+
+    while (mask) {
+      int offset = __builtin_ctz(mask);
+      indexes.push_back(pos + offset);
+      mask &= mask - 1;
+    }
+
+    pos += 32;
+  }
+
+  // scalar fallback
+  for (; pos < size; ++pos) {
+    if (data[pos] == '\n') {
+      indexes.push_back(pos);
+    }
+  }
+
+  if (indexes.empty() || indexes.back() != content.size() - 1) {
+    indexes.push_back(content.size());
+  }
+
+  return indexes;
+}
+
 #endif  // ENABLE_AVX2
 
 TempFile::TempFile(const std::string& prefix, const std::string& content) {
   path_ = temp_path(prefix);
   if (create_file(path_.c_str()) != 0) {
-    glog.error<"Failed to create the temp file: {} ({})\n">(
+    glog.error_ref<"failed to create the temp file: {} ({})\n">(
         path_, std::strerror(errno));
+    glog.flush();
     valid_ = false;
     return;
   }
   if (!content.empty()) {
     if (write_file(path_.c_str(), content) != 0) {
-      glog.error<"Failed to write to the temp file: {} ({})\n">(
+      glog.error_ref<"failed to write to the temp file: {} ({})\n">(
           path_, std::strerror(errno));
+      glog.flush();
       valid_ = false;
     }
   }
@@ -692,8 +752,9 @@ TempFile::TempFile(const std::string& prefix, const std::string& content) {
 TempFile::~TempFile() {
   if (valid_) {
     if (remove_file(path_.c_str()) != 0) {
-      glog.error<"Failed to remove the temp file: {} ({})\n">(
+      glog.error_ref<"failed to remove the temp file: {} ({})\n">(
           path_, std::strerror(errno));
+      glog.flush();
     }
   }
 }
@@ -701,8 +762,9 @@ TempFile::~TempFile() {
 TempDir::TempDir(const std::string& prefix) {
   path_ = temp_path(prefix);
   if (create_directory(path_.c_str()) != 0) {
-    glog.error<"Failed to create the temp directory: {} ({})\n">(
+    glog.error_ref<"failed to create the temp directory: {} ({})\n">(
         path_, std::strerror(errno));
+    glog.flush();
     valid_ = false;
   }
 }
@@ -710,8 +772,9 @@ TempDir::TempDir(const std::string& prefix) {
 TempDir::~TempDir() {
   if (valid_) {
     if (remove_directory(path_.c_str()) != 0) {
-      glog.error<"Failed to remove the temp directory: {} ({})\n">(
+      glog.error_ref<"failed to remove the temp directory: {} ({})\n">(
           path_, std::strerror(errno));
+      glog.flush();
     }
   }
 }
@@ -719,7 +782,7 @@ TempDir::~TempDir() {
 File::File(std::string&& file_name, std::string&& source)
     : file_name_(std::move(file_name)),
       source_(std::move(source)),
-      lines_(read_lines<true>(source_)) {}
+      line_ends_(index_newlines<true>(source_)) {}
 
 File::File(std::string&& file_name)
     : File(std::move(file_name), read_file(file_name.c_str())) {}

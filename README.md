@@ -55,6 +55,7 @@ The following libraries are included as submodules by default so you can start d
 
 |                        Library Name                         | Overview                                               |
 | :---------------------------------------------------------: | :----------------------------------------------------- |
+|    [**femtolog**](https://github.com/pugur523/femtolog)     | An ultra fast logging library                          |
 | [**Google Benchmark**](https://github.com/google/benchmark) | Optimal benchmark framework for performance profiling  |
 |   [**Google Test**](https://github.com/google/googletest)   | Powerful test suite framework                          |
 |                [**zlib**](https://zlib.net/)                | Ideal for compression/decompression of log files, etc. |
@@ -489,3 +490,4 @@ Users can download the installer appropriate for their environment and install t
 |                   Project Name                   | Description                       |
 | :----------------------------------------------: | :-------------------------------- |
 | [femtolog](https://github.com/pugur523/femtolog) | An ultra fast c++ logging library |
+|     [redy](https://github.com/pugur523/redy)     | A new programming language        |

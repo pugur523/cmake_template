@@ -1,0 +1,34 @@
+// clang-format off
+// NOLINTBEGIN
+
+#ifndef BUILD_BUILD_TIME_INFO_H_
+#define BUILD_BUILD_TIME_INFO_H_
+
+#define BUILD_TYPE "@BUILD_TYPE@"
+#define BUILD_TIME "@BUILD_TIME@"
+#define BUILD_PLATFORM "@BUILD_PLATFORM@"
+#define BUILD_ARCH "@BUILD_ARCH@"
+#define BUILD_COMPILER "@BUILD_COMPILER@"
+#define TARGET_PLATFORM "@TARGET_PLATFORM@"
+#define TARGET_ARCH_NAME "@TARGET_ARCH_NAME@"
+#define TARGET_BITS "@TARGET_BITS@"
+#define BUILD_GIT_COMMIT_HASH "@BUILD_GIT_COMMIT_HASH@"
+
+namespace build {
+
+constexpr const char* kBuildType = "@BUILD_TYPE@";
+constexpr const char* kBuildTime = "@BUILD_TIME@";
+constexpr const char* kBuildPlatform = "@BUILD_PLATFORM@";
+constexpr const char* kBuildArch = "@BUILD_ARCH@";
+constexpr const char* kBuildCompiler = "@BUILD_COMPILER@";
+constexpr const char* kTargetPlatform = "@TARGET_PLATFORM@";
+constexpr const char* kTargetArch = "@TARGET_ARCH_NAME@";
+constexpr const char* kTargetBits = "@TARGET_BITS@";
+constexpr const char* kBuildGitCommitHash = "@BUILD_GIT_COMMIT_HASH@";
+
+}  // namespace build
+
+// NOLINTEND
+// clang-format on
+
+#endif  // BUILD_BUILD_TIME_INFO_H_

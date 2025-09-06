@@ -1,6 +1,5 @@
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_VERSION 1)
-set(CMAKE_SYSTEM_PROCESSOR x86_64)
 
 # MinGW toolchain prefix
 set(MINGW_PREFIX "x86_64-w64-mingw32")

@@ -1,5 +1,4 @@
 set(CMAKE_SYSTEM_NAME Windows)
-set(CMAKE_SYSTEM_PROCESSOR x86_64)
 
 # Prefer versioned LLVM tools if available
 find_program(CLANG_PATH NAMES clang-cl REQUIRED)
@@ -10,8 +9,8 @@ find_program(LLVM_NM_PATH NAMES llvm-nm REQUIRED)
 find_program(LLVM_OBJCOPY_PATH NAMES llvm-objcopy REQUIRED)
 find_program(LLVM_OBJDUMP_PATH NAMES llvm-objdump REQUIRED)
 
-# find_program(LLVM_RC_PATH NAMES llvm-rc REQUIRED)
-find_program(RC_PATH NAMES rc REQUIRED)
+find_program(LLVM_RC_PATH NAMES llvm-rc REQUIRED)
+# find_program(RC_PATH NAMES rc REQUIRED)
 find_program(LLVM_STRIP_PATH NAMES llvm-strip REQUIRED)
 
 # Set compiler and tools
@@ -25,8 +24,8 @@ set(CMAKE_NM "${LLVM_NM_PATH}")
 set(CMAKE_OBJCOPY "${LLVM_OBJCOPY_PATH}")
 set(CMAKE_OBJDUMP "${LLVM_OBJDUMP_PATH}")
 
-# set(CMAKE_RC_COMPILER "${LLVM_RC_PATH}")
-set(CMAKE_RC_COMPILER "${RC_PATH}")
+set(CMAKE_RC_COMPILER "${LLVM_RC_PATH}")
+# set(CMAKE_RC_COMPILER "${RC_PATH}")
 set(CMAKE_STRIP "${LLVM_STRIP_PATH}")
 
 # Compiler flags for Windows

@@ -1,5 +1,4 @@
 set(CMAKE_SYSTEM_NAME Darwin)
-set(CMAKE_SYSTEM_PROCESSOR arm64)
 
 # Prefer versioned LLVM tools if available
 find_program(CLANG_PATH NAMES clang-21 clang REQUIRED)

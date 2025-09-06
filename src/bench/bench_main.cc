@@ -1,14 +1,16 @@
 #include "benchmark/benchmark.h"
 #include "core/base/logger.h"
+#include "core/cli/console.h"
 #include "core/diagnostics/signal_handler.h"
 #include "core/diagnostics/stack_trace.h"
 #include "core/diagnostics/terminate_handler.h"
 
 [[clang::xray_always_instrument]]
 int main(int argc, char** argv) {
-  core::register_signal_handlers();
-  core::register_terminate_handler();
   core::register_stack_trace_handler();
+  core::register_terminate_handler();
+  core::register_signal_handlers();
+  core::register_console();
   core::register_glog();
 
   benchmark ::MaybeReenterWithoutASLR(argc, argv);

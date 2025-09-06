@@ -1,82 +1,72 @@
-/out
-/venv
-.cache
-compile_commands.json
-__pycache__
-*.log
-*.profraw
-*.xz
-*.gz
-*.zip
-*Zone.Identifier
-.vscode/
-
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
+# Binary and object files
 *.o
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
 *.so
 *.dylib
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
 *.exe
 *.out
 *.app
+*.a
+*.lib
 
+# Temporary files
 *~
-
-# temporary files which can be created if a process still has a handle open of a deleted file
+*.swp
+*.swo
+.netrwhist
+[._]*.un~
 .fuse_hidden*
-
-# Metadata left by Dolphin file manager, which comes with KDE Plasma
-.directory
-
-# Linux trash folder which might appear on any partition or disk
-.Trash-*
-
-# .nfs files are created when an open file is removed but is still being accessed
 .nfs*
-
-# Log files created by default by the nohup command
 nohup.out
 
-# Swap
-[._]*.s[a-v][a-z]
-!*.svg # comment out if you don't need vector files
-[._]*.sw[a-p]
-[._]s[a-rt-v][a-z]
-[._]ss[a-gi-z]
-[._]sw[a-p]
+# Log and cache files
+*.log
+*.profraw
+*.cache
+*.d
+__pycache__
+.pytest_cache/
+.mypy_cache/
 
-# Session
+# Editor and IDE configurations
+.vscode/
+.idea/
+*.suo
+*.user
+*.vcxproj.user
+compile_commands.json
 Session.vim
 Sessionx.vim
-
-# Temporary
-.netrwhist
-*~
-# Auto-generated tag files
 tags
-# Persistent undo
-[._]*.un~
+
+# Virtual environments
+*venv/
+
+# Operating System specific files
+.DS_Store
+.directory
+.Trash-*
+*:Zone.Identifier
+
+# C/C++
+out/
+*.gch
+*.pch
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+Testing/
+
+# Rust
+target/
+Cargo.lock
+
+# Python
+dist/
+/build
+*.pyc
+
+# Docs
+site/

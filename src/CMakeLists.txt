@@ -49,11 +49,14 @@ option(ENABLE_RUN_PROGRAM_POST_BUILD "enable running program post build" FALSE)
 option(ENABLE_RUN_BENCHMARK_POST_BUILD "enable running benchmarks post build" FALSE)
 option(ENABLE_RUN_TESTING_POST_BUILD "enable running tests post build" FALSE)
 
+set(TARGET_OS_NAME ${CMAKE_HOST_SYSTEM_NAME} CACHE STRING "target os name in lower case")
+set(TARGET_ARCH_NAME ${CMAKE_HOST_SYSTEM_PROCESSOR} CACHE STRING "target architecture name in lower case")
+
+set(CMAKE_SYSTEM_PROCESSOR ${TARGET_ARCH_NAME})
+set(CMAKE_SYSTEM_NAME ${TARGET_OS_NAME})
+
 string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} lower_arch)
 string(TOLOWER ${CMAKE_SYSTEM_NAME} lower_os_name)
-
-set(TARGET_ARCH_NAME ${lower_arch} CACHE STRING "target architecture name in lower case")
-set(TARGET_OS_NAME ${lower_os_name} CACHE STRING "target os name in lower case")
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} HOST_ARCH_NAME)
 string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} HOST_OS_NAME)
@@ -62,13 +65,15 @@ option(ENABLE_VERBOSE "enable detailed build information" TRUE)
 option(ENABLE_LTO "enable link time optimization" TRUE)
 option(ENABLE_NATIVE_ARCH "enable optimization for native architecture" TRUE)
 
+option(ENABLE_BUILD_INFO_DEFINITIONS "enable compile-time information definitions" FALSE)
 option(ENABLE_BUILD_REPORT "generate the report for optimization, build time, etc." TRUE)
 option(ENABLE_COVERAGE "enable coverage using -fprofile-instr-generate and llvm-cov. runs main app and test on post build if available." FALSE)
 option(ENABLE_OPTIMIZATION_REPORT "generate optimization report" FALSE)
 option(ENABLE_XRAY "enable llvm-xray. not compatible with windows build, debug build, address sanitizers. runs main app and test on post build if available." FALSE)
 option(ENABLE_SANITIZERS "enable address and undefined sanitizers" FALSE)
 option(ENABLE_LLVM_UNWIND "enable llvm libunwind to fetch stacktrace" FALSE)
-option(ENABLE_AVX2 "enable avx2 if available" TRUE)
+option(ENABLE_AVX2 "enable avx2 for optimization if available" TRUE)
+option(ENABLE_X86_ASM "enable x86 assembly for optimization if available" TRUE)
 
 option(ENABLE_WARNINGS_AS_ERRORS "treat warnings as errors" FALSE)
 
@@ -106,6 +111,24 @@ if(ENABLE_AVX2 AND TARGET_OS_NAME MATCHES "darwin")
   message(WARNING "ENABLE_AVX2 for Darwin build is not supported.\n"
     "set ENABLE_AVX2 to false forcely.")
   set(ENABLE_AVX2 FALSE)
+endif()
+
+if(ENABLE_AVX2 AND NOT (${lower_arch} MATCHES "x86"))
+  message(WARNING "ENABLE_AVX2 for not x86 is not supported.\n"
+    "set ENABLE_AVX2 to false forcely.")
+  set(ENABLE_AVX2 FALSE)
+endif()
+
+if(ENABLE_X86_ASM AND NOT (${lower_arch} MATCHES "x86"))
+  message(WARNING "ENABLE_X86_ASM for not x86 is not supported.\n"
+    "set ENABLE_X86_ASM to false forcely.")
+  set(ENABLE_X86_ASM FALSE)
+endif()
+
+if(ENABLE_NATIVE_ARCH AND (NOT CMAKE_SYSTEM_PROCESSOR MATCHES ${CMAKE_HOST_SYSTEM_PROCESSOR}))
+  message(WARNING "ENABLE_NATIVE_ARCH in cross build is not supported.\n"
+    "set NATIVE_ARCH to false forcely.")
+  set(ENABLE_NATIVE_ARCH FALSE)
 endif()
 
 if(ENABLE_XRAY AND ENABLE_SANITIZERS)
@@ -201,7 +224,7 @@ host arch name: ${HOST_ARCH_NAME}
 target os name: ${TARGET_OS_NAME}
 target arch name: ${TARGET_ARCH_NAME}
 project include directories: ${PROJECT_INCLUDE_DIRECTORIES}
-project compile options: ${PROJECT_COMPILE_OPTIONS}
+project compile options: ${PROJECT_C_CXX_COMPILE_OPTIONS}
 project compile definitions: ${PROJECT_COMPILE_DEFINITIONS}
 project link options: ${PROJECT_LINK_OPTIONS}
 project link directories: ${PROJECT_LINK_DIRECTORIES}
@@ -225,6 +248,7 @@ enable run testing post build: ${ENABLE_RUN_TESTING_POST_BUILD}
 enable verbose: ${ENABLE_VERBOSE}
 enable lto: ${ENABLE_LTO}
 enable native arch: ${ENABLE_NATIVE_ARCH}
+enable build info denitions ${ENABLE_BUILD_INFO_DEFINITIONS}
 enable build report: ${ENABLE_BUILD_REPORT}
 enable profile: ${ENABLE_COVERAGE}
 enable optimization report: ${ENABLE_OPTIMIZATION_REPORT}
@@ -232,8 +256,9 @@ enable xray: ${ENABLE_XRAY}
 enable sanitizers: ${ENABLE_SANITIZERS}
 enable llvm unwind: ${ENABLE_LLVM_UNWIND}
 enable avx2: ${ENABLE_AVX2}
+enable x86 asm: ${ENABLE_X86_ASM}
 enable warnings as errors: ${ENABLE_WARNINGS_AS_ERRORS}
--=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-${ColourReset}")
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-${ColorReset}")
   print_all_build_flags()
 endif()
 

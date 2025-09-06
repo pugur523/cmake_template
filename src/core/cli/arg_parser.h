@@ -32,22 +32,22 @@ enum class ParseResult : uint8_t {
   kErrorPositionalParseFailed = 11,
   kErrorPositionalTooMany = 12,
 
-  // Keep this at the end and equal to the last entry.
+  // keep this at the end and equal to the last entry.
   kMaxValue = kErrorPositionalTooMany,
 };
 
-class CORE_EXPORT ArgumentParser {
+class CORE_EXPORT ArgParser {
  public:
-  explicit ArgumentParser(const std::string& program_name,
-                          const std::string& description = "");
-  ~ArgumentParser();
+  explicit ArgParser(const std::string& program_name,
+                     const std::string& description = "");
+  ~ArgParser();
 
-  ArgumentParser(const ArgumentParser&) = delete;
-  ArgumentParser& operator=(const ArgumentParser&) = delete;
-  ArgumentParser(ArgumentParser&&) noexcept = default;
-  ArgumentParser& operator=(ArgumentParser&&) noexcept = default;
+  ArgParser(const ArgParser&) = delete;
+  ArgParser& operator=(const ArgParser&) = delete;
+  ArgParser(ArgParser&&) noexcept = default;
+  ArgParser& operator=(ArgParser&&) noexcept = default;
 
-  // Flag / Option / List / Positional adders
+  // flag / option / list / positional adders
 
   template <typename T = bool>
   void add_flag(T* storage,
@@ -56,7 +56,7 @@ class CORE_EXPORT ArgumentParser {
                 bool required = false,
                 const std::optional<T>& default_value = {false}) {
     static_assert(std::is_same_v<T, bool> || std::is_integral_v<T>,
-                  "Flag only supports bool or integral types.");
+                  "flag only supports bool or integral types.");
     add_option_impl<Flag>(storage, name, description, required, default_value);
   }
 
@@ -106,16 +106,11 @@ class CORE_EXPORT ArgumentParser {
                        const std::string& name,
                        const std::string& description,
                        bool required,
-                       const std::optional<T>& default_value) {
-    auto arg = std::make_unique<ArgType<T>>(storage, name, description,
-                                            required, default_value);
-    options_[name] = std::move(arg);
-    option_order_.push_back(name);
-  }
+                       const std::optional<T>& default_value);
 
   std::string resolve_alias(const std::string& name) const;
-  void print_warn(const std::string& message) const;
-  void print_error(const std::string& message) const;
+  inline void print_warn(const std::string& message) const;
+  inline void print_error(const std::string& message) const;
 
   std::unordered_map<std::string, std::unique_ptr<OptionBase>> options_;
   std::unordered_map<std::string, std::string> aliases_;
@@ -129,6 +124,18 @@ class CORE_EXPORT ArgumentParser {
   std::vector<std::string> positional_names_;
   std::vector<std::string> positional_descriptions_;
 };
+
+template <template <typename> typename ArgType, typename T>
+void ArgParser::add_option_impl(T* storage,
+                                const std::string& name,
+                                const std::string& description,
+                                bool required,
+                                const std::optional<T>& default_value) {
+  auto arg = std::make_unique<ArgType<T>>(storage, name, description, required,
+                                          default_value);
+  options_[name] = std::move(arg);
+  option_order_.push_back(name);
+}
 
 }  // namespace core
 

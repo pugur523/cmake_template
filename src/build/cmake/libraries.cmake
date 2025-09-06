@@ -1,10 +1,10 @@
 macro(setup_gtest)
-  set(GTEST_ROOT_DIR ${THIRD_PARTY_DIR}/gtest)
-  set(GTEST_DIR ${GTEST_ROOT_DIR}/googletest)
-  set(GTEST_INCLUDE_DIR ${GTEST_DIR}/include)
+  set(GTEST_ROOT_DIR ${THIRD_PARTY_DIR}/gtest CACHE STRING "" FORCE)
+  set(GTEST_DIR ${GTEST_ROOT_DIR}/googletest CACHE STRING "" FORCE)
+  set(GTEST_INCLUDE_DIR ${GTEST_DIR}/include CACHE STRING "" FORCE)
 
-  set(GMOCK_DIR ${GTEST_ROOT_DIR}/googlemock)
-  set(GMOCK_INCLUDE_DIR ${GMOCK_DIR}/include)
+  set(GMOCK_DIR ${GTEST_ROOT_DIR}/googlemock CACHE STRING "" FORCE)
+  set(GMOCK_INCLUDE_DIR ${GMOCK_DIR}/include CACHE STRING "" FORCE)
 
   # https://google.github.io/googletest/quickstart-cmake.html
   set(INSTALL_GTEST FALSE CACHE BOOL "" FORCE)
@@ -16,16 +16,16 @@ macro(setup_gtest)
   add_subdirectory(${GTEST_ROOT_DIR})
 
   # Do not link `gtest_main` and `gmock_main` otherwise the testing will contain duplicate entrypoints.
-  set(GTEST_LIBRARIES gtest)
+  set(GTEST_LIBRARIES gtest CACHE STRING "" FORCE)
 
   if(BUILD_GMOCK)
-    set(GMOCK_LIBRARIES gmock)
+    set(GMOCK_LIBRARIES gmock CACHE STRING "" FORCE)
   endif()
 endmacro()
 
 macro(setup_google_benchmark)
-  set(GOOGLE_BENCHMARK_DIR ${THIRD_PARTY_DIR}/google_benchmark)
-  set(GOOGLE_BENCHMARK_INCLUDE_DIR ${GOOGLE_BENCHMARK_DIR}/include)
+  set(GOOGLE_BENCHMARK_DIR ${THIRD_PARTY_DIR}/google_benchmark CACHE STRING "" FORCE)
+  set(GOOGLE_BENCHMARK_INCLUDE_DIR ${GOOGLE_BENCHMARK_DIR}/include CACHE STRING "" FORCE)
 
   set(BENCHMARK_ENABLE_TESTING FALSE CACHE BOOL "" FORCE)
   set(BENCHMARK_ENABLE_EXCEPTIONS TRUE CACHE BOOL "" FORCE)
@@ -55,7 +55,7 @@ macro(setup_google_benchmark)
 
   add_subdirectory(${GOOGLE_BENCHMARK_DIR})
 
-  set(GOOGLE_BENCHMARK_LIBRARIES benchmark::benchmark)
+  set(GOOGLE_BENCHMARK_LIBRARIES benchmark::benchmark CACHE STRING "" FORCE)
 endmacro()
 
 macro(setup_llvm)
@@ -94,6 +94,10 @@ macro(setup_llvm)
 
   if(MINGW_BUILD)
     list(APPEND PROJECT_LINK_OPTIONS -Wl,-Bstatic -lc++ -lc++abi -lunwind -Wl,-Bdynamic)
+  endif()
+
+  if(NOT TARGET_OS_NAME MATCHES "windows")
+    list(APPEND PROJECT_LINK_LIBRARIES c++experimental c++abi c++)
   endif()
 endmacro()
 
@@ -140,6 +144,7 @@ macro(setup_femtolog)
 
   set(FEMTOLOG_LIBRARIES femtolog)
 
+  set(FEMTOLOG_DO_CLANG_TIDY FALSE CACHE BOOL "" FORCE)
   set(FEMTOLOG_BUILD_SHARED FALSE CACHE BOOL "" FORCE)
   set(FEMTOLOG_ENABLE_VERBOSE FALSE CACHE BOOL "" FORCE) 
 
@@ -155,6 +160,9 @@ macro(setup_femtolog)
   set(FEMTOLOG_ENABLE_AVX2 ${PROJECT_ENABLE_AVX2} CACHE BOOL "" FORCE)
 
   set(FEMTOLOG_ENABLE_WARNINGS_AS_ERRORS FALSE CACHE BOOL "" FORCE)
+
+  set(FEMTOLOG_BUILD_TESTING FALSE CACHE BOOL "" FORCE)
+  set(FEMTOLOG_BUILD_BENCHMARK FALSE CACHE BOOL "" FORCE)
 
   set(FEMTOLOG_USE_EXTERNAL_ZLIB TRUE CACHE BOOL "" FORCE)
   set(FEMTOLOG_USE_EXTERNAL_FMTLIB FALSE CACHE BOOL "" FORCE)

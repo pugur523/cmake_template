@@ -15,7 +15,7 @@ set(SOURCES
 add_executable(${TEST_NAME} ${SOURCES})
 
 target_include_directories(${TEST_NAME} PRIVATE ${PROJECT_INCLUDE_DIRECTORIES})
-target_compile_options(${TEST_NAME} PRIVATE ${PROJECT_COMPILE_OPTIONS})
+target_compile_options(${TEST_NAME} PRIVATE ${PROJECT_C_CXX_COMPILE_OPTIONS})
 target_compile_definitions(${TEST_NAME} PRIVATE ${PROJECT_COMPILE_DEFINITIONS})
 target_link_options(${TEST_NAME} PRIVATE ${PROJECT_LINK_OPTIONS})
 target_link_directories(${TEST_NAME} PRIVATE ${PROJECT_LINK_DIRECTORIES})

@@ -1,5 +1,5 @@
 function(setup_module module_name objects_name)
-  set(multi_value_args INCLUDE_DIRS LINK_DIRS COMPILE_OPTIONS LINK_OPTIONS LINK_LIBS COMPILE_DEFINITIONS)
+  set(multi_value_args INCLUDE_DIRS LINK_DIRS C_CXX_COMPILE_OPTIONS NASM_COMPILE_OPTIONS LINK_OPTIONS LINK_LIBS COMPILE_DEFINITIONS)
   cmake_parse_arguments(ARG "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
   string(TOUPPER ${module_name} UPPER_MODULE_NAME)
@@ -10,8 +10,15 @@ function(setup_module module_name objects_name)
     target_include_directories(${objects_name} PRIVATE ${ARG_INCLUDE_DIRS})
   endif()
 
-  if(ARG_COMPILE_OPTIONS)
-    target_compile_options(${objects_name} PRIVATE ${ARG_COMPILE_OPTIONS})
+  if(ARG_C_CXX_COMPILE_OPTIONS)
+    target_compile_options(${objects_name} PRIVATE
+      $<$<COMPILE_LANGUAGE:C>:${ARG_C_CXX_COMPILE_OPTIONS}>
+      $<$<COMPILE_LANGUAGE:CXX>:${ARG_C_CXX_COMPILE_OPTIONS}>
+    )
+  endif()
+
+  if(ARG_NASM_COMPILE_OPTIONS)
+    target_compile_options(${objects_name} PRIVATE $<$<COMPILE_LANGUAGE:ASM_NASM>:${ARG_NASM_COMPILE_OPTIONS}>)
   endif()
 
   if(ARG_COMPILE_DEFINITIONS)
@@ -49,8 +56,15 @@ function(setup_module module_name objects_name)
     target_include_directories(${module_name} PRIVATE ${ARG_INCLUDE_DIRS})
   endif()
 
-  if(ARG_COMPILE_OPTIONS)
-    target_compile_options(${module_name} PRIVATE ${ARG_COMPILE_OPTIONS})
+  if(ARG_C_CXX_COMPILE_OPTIONS)
+    target_compile_options(${module_name} PRIVATE
+      $<$<COMPILE_LANGUAGE:C>:${ARG_C_CXX_COMPILE_OPTIONS}>
+      $<$<COMPILE_LANGUAGE:CXX>:${ARG_C_CXX_COMPILE_OPTIONS}>
+    )
+  endif()
+
+  if(ARG_NASM_COMPILE_OPTIONS)
+    target_compile_options(${module_name} PRIVATE $<$<COMPILE_LANGUAGE:ASM_NASM>:${ARG_NASM_COMPILE_OPTIONS}>)
   endif()
 
   if(ARG_COMPILE_DEFINITIONS)

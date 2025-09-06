@@ -4,10 +4,10 @@ macro(setup_windows_flags)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics")
 
   # Base flags - enable warnings
-  list(APPEND PROJECT_COMPILE_OPTIONS /W4 /clang:-Wall /clang:-Wextra /clang:-Wpedantic)
+  list(APPEND PROJECT_C_CXX_COMPILE_OPTIONS /W4 /clang:-Wall /clang:-Wextra /clang:-Wpedantic)
 
   if(ENABLE_WARNINGS_AS_ERRORS)
-    list(APPEND PROJECT_COMPILE_OPTIONS /WX /clang:-Werror)
+    list(APPEND PROJECT_C_CXX_COMPILE_OPTIONS /WX /clang:-Werror)
   endif()
 
   # Debug configuration
@@ -46,7 +46,7 @@ macro(setup_windows_flags)
   endif()
 
   if(ENABLE_OPTIMIZATION_REPORT)
-    list(APPEND PROJECT_COMPILE_OPTIONS "/clang:-fsave-optimization-record;/clang:-fdebug-compilation-dir=.;/clang:-Rpass='.*';/clang:-Rpass-missed='.*';/clang:-Rpass-analysis='.*'")
+    list(APPEND PROJECT_C_CXX_COMPILE_OPTIONS "/clang:-fsave-optimization-record;/clang:-fdebug-compilation-dir=.;/clang:-Rpass='.*';/clang:-Rpass-missed='.*';/clang:-Rpass-analysis='.*'")
   endif()
 
   list(APPEND WINDOWS_LINK_LIBRARIES "dbghelp")
@@ -60,10 +60,10 @@ macro(setup_unix_flags)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always -fPIC -stdlib=libc++")
 
   # Base flags - enable warnings
-  list(APPEND PROJECT_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -fno-common)
+  list(APPEND PROJECT_C_CXX_COMPILE_OPTIONS -Wall -Wextra -Wpedantic -fno-common)
 
   if(ENABLE_WARNINGS_AS_ERRORS)
-    list(APPEND PROJECT_COMPILE_OPTIONS -Werror)
+    list(APPEND PROJECT_C_CXX_COMPILE_OPTIONS -Werror)
   endif()
 
   # Debug configuration
@@ -126,7 +126,7 @@ macro(setup_unix_flags)
   endif()
 
   if(ENABLE_OPTIMIZATION_REPORT)
-    list(APPEND PROJECT_COMPILE_OPTIONS "-fsave-optimization-record;-fdebug-compilation-dir=.;-Rpass='.*';-Rpass-missed='.*';-Rpass-analysis='.*'")
+    list(APPEND PROJECT_C_CXX_COMPILE_OPTIONS "-fsave-optimization-record;-fdebug-compilation-dir=.;-Rpass='.*';-Rpass-missed='.*';-Rpass-analysis='.*'")
   endif()
 
   # Sanitize configuration
@@ -165,11 +165,11 @@ macro(setup_common_flags)
 
   # Profiling with llvm-xray
   if(ENABLE_XRAY)
-    list(APPEND PROJECT_COMPILE_OPTIONS -fxray-instrument -fxray-instrumentation-bundle=function -fxray-instruction-threshold=1)
+    list(APPEND PROJECT_C_CXX_COMPILE_OPTIONS -fxray-instrument -fxray-instrumentation-bundle=function -fxray-instruction-threshold=1)
     list(APPEND PROJECT_LINK_OPTIONS -fxray-instrument -fxray-instrumentation-bundle=function -fxray-instruction-threshold=1)
 
     if(NOT TARGET_OS_NAME MATCHES "darwin")
-      list(APPEND PROJECT_COMPILE_OPTIONS -fxray-shared)
+      list(APPEND PROJECT_C_CXX_COMPILE_OPTIONS -fxray-shared)
       list(APPEND PROJECT_LINK_OPTIONS -fxray-shared)
     endif()
 
@@ -179,13 +179,13 @@ macro(setup_common_flags)
   endif()
 
   if(ENABLE_AVX2)
-    include(CheckCXXSourceRuns)
-
     if(CMAKE_CROSSCOMPILING)
       message(STATUS "Cross-compiling detected. Skipping runtime AVX2 check.")
 
-      set(HAS_AVX2 TRUE)
+      set(HAS_AVX2 TRUE CACHE BOOL "" FORCE)
     else()
+      include(CheckCXXSourceRuns)
+
       set(AVX2_TEST_CODE "
       #include <immintrin.h>
       int main() {
@@ -201,13 +201,21 @@ macro(setup_common_flags)
     if(HAS_AVX2)
       message(STATUS "AVX2 support detected")
       list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_AVX2=1)
-      list(APPEND PROJECT_COMPILE_OPTIONS -mavx2)
+      list(APPEND PROJECT_C_CXX_COMPILE_OPTIONS -mavx2)
     else()
       list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_AVX2=0)
       message(STATUS "AVX2 support not available")
     endif()
   else()
     list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_AVX2=0)
+  endif()
+
+  if(ENABLE_X86_ASM)
+    enable_language(ASM_NASM)
+    list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_X86_ASM=1)
+    list(APPEND PROJECT_NASM_COMPILE_OPTIONS -f elf64)
+  else()
+    list(APPEND PROJECT_COMPILE_DEFINITIONS ENABLE_X86_ASM=0)
   endif()
 endmacro()
 
@@ -251,9 +259,9 @@ CMAKE_EXE_LINKER_FLAGS_DEBUG: ${CMAKE_EXE_LINKER_FLAGS_DEBUG}
 CMAKE_SHARED_LINKER_FLAGS_DEBUG: ${CMAKE_SHARED_LINKER_FLAGS_DEBUG}
 CMAKE_EXE_LINKER_FLAGS_RELEASE: ${CMAKE_EXE_LINKER_FLAGS_RELEASE}
 CMAKE_SHARED_LINKER_FLAGS_RELEASE: ${CMAKE_SHARED_LINKER_FLAGS_RELEASE}
-PROJECT_COMPILE_OPTIONS: ${PROJECT_COMPILE_OPTIONS}
+PROJECT_C_CXX_COMPILE_OPTIONS: ${PROJECT_C_CXX_COMPILE_OPTIONS}
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-${ColourReset}")
+${ColorReset}")
 endfunction()
 
 # Helper function to reset all flags (for testing)

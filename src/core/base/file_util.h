@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
-#include "build/build_flag.h"
 #include "core/base/core_export.h"
+#include "core/check.h"
 
 #if ENABLE_AVX2
 #include <immintrin.h>
@@ -22,7 +22,10 @@ using Files = std::vector<std::string>;
 
 [[nodiscard]] CORE_EXPORT bool file_exists(const char* file_name);
 [[nodiscard]] CORE_EXPORT bool dir_exists(const char* dir_name);
+[[nodiscard]] CORE_EXPORT std::vector<std::byte> read_file_bin(
+    const char* path);
 [[nodiscard]] CORE_EXPORT std::string read_file(const char* path);
+[[nodiscard]] CORE_EXPORT std::u8string read_file_utf8(const char8_t* path);
 [[nodiscard]] CORE_EXPORT const std::string& exe_path();
 [[nodiscard]] CORE_EXPORT const std::string& exe_dir();
 [[nodiscard]] CORE_EXPORT const std::string& resources_dir();
@@ -96,21 +99,41 @@ template <typename... Parts>
 }
 
 [[nodiscard]] CORE_EXPORT std::vector<std::string> read_lines_default(
-    const std::string& content);
+    std::string_view content);
 
 #if ENABLE_AVX2
 [[nodiscard]] CORE_EXPORT std::vector<std::string> read_lines_with_avx2(
-    const std::string& content);
+    std::string_view content);
 #endif
 
 template <bool use_avx2_if_available = true>
-inline std::vector<std::string> read_lines(const std::string& content) {
+[[nodiscard]] inline std::vector<std::string> read_lines(
+    std::string_view content) {
 #if ENABLE_AVX2
   if constexpr (use_avx2_if_available) {
     return read_lines_with_avx2(content);
   }
 #endif
   return read_lines_default(content);
+}
+
+[[nodiscard]] CORE_EXPORT std::vector<std::size_t> index_newlines_default(
+    std::string_view content);
+
+#if ENABLE_AVX2
+[[nodiscard]] CORE_EXPORT std::vector<std::size_t> index_newlines_with_avx2(
+    std::string_view content);
+#endif
+
+template <bool use_avx2_if_available = true>
+[[nodiscard]] inline std::vector<std::size_t> index_newlines(
+    std::string_view content) {
+#if ENABLE_AVX2
+  if constexpr (use_avx2_if_available) {
+    return index_newlines_with_avx2(content);
+  }
+#endif
+  return index_newlines_default(content);
 }
 
 class CORE_EXPORT TempFile {
@@ -155,22 +178,31 @@ class CORE_EXPORT File {
   File(File&&) noexcept = default;
   File& operator=(File&&) noexcept = default;
 
-  inline constexpr const std::string& file_name() const { return file_name_; }
-  inline constexpr const std::string& source() const { return source_; }
-  inline const std::string& line(std::size_t line_no) const {
-#if IS_DEBUG
-    static const std::string empty = "";
-    if (line_no == 0 || line_no > lines_.size()) {
-      return empty;
+  inline const std::string& file_name() const { return file_name_; }
+  inline const std::string& source() const { return source_; }
+
+  // 1 indexed
+  inline std::string_view line(std::size_t line_no) const {
+    DCHECK_GT(line_no, 0);
+    DCHECK_LE(line_no, line_count());
+
+    std::size_t line_start = (line_no == 1) ? 0 : line_ends_[line_no - 2] + 1;
+    std::size_t line_end = line_ends_[line_no - 1];
+
+    // crlf
+    if (line_end > line_start && source_[line_end - 1] == '\r') {
+      --line_end;
     }
-#endif
-    return lines_[line_no - 1];
+
+    return std::string_view(&source_[line_start], line_end - line_start);
   }
 
+  inline std::size_t line_count() const { return line_ends_.size(); }
+
  private:
-  std::string file_name_ = "";
-  std::string source_ = "";
-  std::vector<std::string> lines_;
+  std::string file_name_;
+  std::string source_;
+  std::vector<std::size_t> line_ends_;
 };
 
 }  // namespace core

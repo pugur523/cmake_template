@@ -43,7 +43,7 @@ void stack_trace_entries_to_buffer(
   char line_buffer[kLineBufferSize];
   std::size_t written = 0;
 
-  for (std::size_t i = 0; i < count && written < buffer_size - 1; i++) {
+  for (std::size_t i = 0; i < count && written < buffer_size - 1; ++i) {
     entries[i].to_string(line_buffer, sizeof(line_buffer));
     std::size_t line_len = safe_strlen(line_buffer);
 
@@ -54,7 +54,7 @@ void stack_trace_entries_to_buffer(
 
       if (written < buffer_size - 1) {
         buffer[written] = '\n';
-        written++;
+        ++written;
       }
     } else {
       break;
@@ -86,7 +86,9 @@ const char* demangle_symbol_safe(const char* mangled_name,
 
   if (demangled && status == 0) {
     write_raw(demangled_buffer, demangled, demangled_len);
-    free(demangled);  // __cxa_demangle allocated this
+
+    // __cxa_demangle allocated this
+    free(demangled);
     return demangled_buffer;
   }
 
@@ -235,8 +237,8 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
     char* file_cursor = entry.file.data();
     write_raw(file_cursor, file_name, kFileStrLength);
 
-    collected_count++;
-    frame_index++;
+    ++collected_count;
+    ++frame_index;
   } while (unw_step(&cursor) > 0);
 
   return collected_count;
@@ -249,7 +251,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
   char symbol_buf[kSymbolBufferSize];
   std::size_t collected_count = 0;
 
-  for (std::size_t i = first_frame; i < static_cast<std::size_t>(frames); i++) {
+  for (std::size_t i = first_frame; i < static_cast<std::size_t>(frames); ++i) {
     uintptr_t current_address = reinterpret_cast<uintptr_t>(stack[i]);
 
     if (!is_valid_address(current_address)) {
@@ -294,10 +296,10 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
 
     char* function_cursor = entry.function.data();
     char* file_cursor = entry.file.data();
-    write_raw(function_cursor, function_name, kFunctionStrLength);
-    write_raw(file_cursor, file_name, kFileStrLength);
+    write_raw(function_cursor, function_name, safe_strlen(function_name));
+    write_raw(file_cursor, file_name, safe_strlen(file_name));
 
-    collected_count++;
+    ++collected_count;
   }
 
   return collected_count;
@@ -326,7 +328,7 @@ std::size_t collect_stack_trace(StackTraceEntry out[kPlatformMaxFrames],
   char address_buf[32];
   std::size_t count = 0;
 
-  for (WORD i = 0; i < frames; i++) {
+  for (WORD i = 0; i < frames; ++i) {
     DWORD64 current_address = reinterpret_cast<DWORD64>(stack[i + first_frame]);
 
     // Skip invalid addresses

@@ -1,0 +1,20 @@
+[project]
+name = "sample_project"
+version = "0.1.0"
+description = ""
+authors = [{ name = "hoge", email = "hoge@email.com" }]
+requires-python = ">=3.13"
+dependencies = [
+    "requests>=2.32.3,<2.33.0",
+    "cpplint>=2.0.2,<2.1.0",
+    "pyyaml>=6.0.2,<6.1.0",
+    "pygments>=2.11.2,<2.12.0",
+    "guppy3>=3.1.5,<3.2.0",
+]
+
+[tool.uv]
+package = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
