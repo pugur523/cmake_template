@@ -85,9 +85,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ matrix.os == 'ubuntu-latest' && '~/.cache/ccache' || '' }}
-            ${{ matrix.os == 'macos-latest' && '~/Library/Caches/ccache' || '' }}
-            ${{ matrix.os == 'windows-latest' && '${{ env.LOCALAPPDATA }}\ccache' || '' }}
+            ~/.cache/ccache
+            ~/Library/Caches/ccache
+            ${{ env.LOCALAPPDATA }}/ccache
           key: ccache-${{ matrix.os }}-${{ matrix.cc }}-${{ matrix.cxx }}
 
       - name: Cache LLVM MinGW
