@@ -188,8 +188,6 @@ jobs:
           fi
 
           uv run python -u src/build/scripts/build.py $BUILD_ARGS --extra_args="$EXTRA_ARGS"
-          # show ccache stats
-          ccache -s
         shell: bash
 
       - name: Upload artifacts

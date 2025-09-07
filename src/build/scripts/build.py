@@ -204,6 +204,7 @@ def build_with_all_option_combinations(
 ):
     options = {
         "-DENABLE_AVX2": ["false", "true"],
+        "-DENABLE_X86_ASM": ["false", "true"],
         "-DENABLE_SANITIZERS": ["false", "true"],
         "-DENABLE_LLVM_UNWIND": ["false", "true"],
     }
